@@ -20,7 +20,7 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Employee List',
-        href: '/employee-list',
+        href: '/employee',
         icon: UsersRound,
     },
     {
