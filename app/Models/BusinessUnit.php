@@ -9,27 +9,47 @@ class BusinessUnit extends Model
 {
     use HasFactory;
 
+    /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
     protected $table = 'business_units';
+
+    /**
+     * The primary key associated with the table.
+     *
+     * @var string
+     */
     protected $primaryKey = 'businessunit_id';
-    protected $keyType = 'string';
-    public $incrementing = false;
 
-    protected $fillable = ['businessunit_id', 'businessunit_name'];
-    
-    // Add UUID generation in a boot method or handle it in your controller
-    protected static function boot()
-    {
-        parent::boot();
-        
-        static::creating(function ($model) {
-            if (!$model->businessunit_id) {
-                $model->businessunit_id = \Illuminate\Support\Str::uuid()->toString();
-            }
-        });
-    }
+    /**
+     * Indicates if the model's ID is auto-incrementing.
+     *
+     * @var bool
+     */
+    public $incrementing = true;
 
-    public function templateImages()
-    {
-        return $this->hasMany(TemplateImage::class, 'businessunit_id');
-    }
+    /**
+     * The data type of the primary key.
+     *
+     * @var string
+     */
+    protected $keyType = 'int';
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'businessunit_name',
+    ];
+
+    /**
+     * Indicates if the model should be timestamped.
+     *
+     * @var bool
+     */
+    public $timestamps = true;
 }

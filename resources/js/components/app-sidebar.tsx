@@ -25,7 +25,7 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Business Units',
-        href: '/business-units',
+        href: '/business-unit',
         icon: BriefcaseBusiness,
     },
     {

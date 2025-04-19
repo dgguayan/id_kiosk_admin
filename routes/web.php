@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BusinessUnitController;
 use App\Http\Controllers\EmployeeController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -14,14 +15,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard');
 });
 
-// Make sure you have the proper employee resource routes
+//employee
 Route::resource('employee', EmployeeController::class)->middleware('auth');
 Route::post('/employees/bulk-destroy', [EmployeeController::class, 'bulkDestroy'])->name('employee.bulk-destroy');
-
-// Ensure the employee.update route exists and is properly named
 Route::put('/employee/{id}', [EmployeeController::class, 'update'])->name('employee.update');
-
 Route::get('/employee/image', [EmployeeController::class, 'serveImage'])->name('employee.image');
+
+//business unit
+Route::resource('business-unit', BusinessUnitController::class)->middleware('auth');
+Route::post('/business-unit/bulk-destroy', [BusinessUnitController::class, 'bulkDestroy'])->name('business-unit.bulk-destroy');
 
 // Network images route
 Route::get('/network-images/{folder}/{filename}', function ($folder, $filename) {

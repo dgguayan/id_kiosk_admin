@@ -37,7 +37,7 @@ class EmployeeSeeder extends Seeder
             'Content Writer'
         ];
 
-        for ($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 10000; $i++) {
             $firstname = $faker->firstName;
             $lastname = $faker->lastName;
             $middlename = $faker->optional(0.7)->lastName;
