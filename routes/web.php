@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BusinessUnitController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\TemplateImagesController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -24,6 +25,13 @@ Route::get('/employee/image', [EmployeeController::class, 'serveImage'])->name('
 //business unit
 Route::resource('business-unit', BusinessUnitController::class)->middleware('auth');
 Route::post('/business-unit/bulk-destroy', [BusinessUnitController::class, 'bulkDestroy'])->name('business-unit.bulk-destroy');
+
+// ID Templates routes
+Route::middleware(['auth'])->group(function () {
+    Route::resource('id-templates', TemplateImagesController::class);
+    Route::get('/id-templates/{id}/layout', [TemplateImagesController::class, 'layout'])->name('id-templates.layout');
+    Route::post('/id-templates/{id}/update-positions', [TemplateImagesController::class, 'updatePositions'])->name('id-templates.update-positions');
+});
 
 // Network images route
 Route::get('/network-images/{folder}/{filename}', function ($folder, $filename) {
