@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class TemplateImagesController extends Controller
@@ -320,5 +321,63 @@ class TemplateImagesController extends Controller
     {
         // Return the route to access the network image
         return route('network.image', ['folder' => 'id_templates', 'filename' => $filename]);
+    }
+
+    /**
+     * Update QR code position
+     */
+    public function updateQrPosition(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'emp_qrcode_x' => 'required|numeric',
+            'emp_qrcode_y' => 'required|numeric',
+            'emp_qrcode_width' => 'required|numeric|min:50',
+            'emp_qrcode_height' => 'required|numeric|min:50',
+        ]);
+        
+        try {
+            $template = DB::table('template_images')
+                ->where('id', $id)
+                ->first();
+                
+            if (!$template) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Template not found'
+                ], 404);
+            }
+            
+            // Update only the QR code positioning fields
+            DB::table('template_images')
+                ->where('id', $id)
+                ->update([
+                    'emp_qrcode_x' => $validated['emp_qrcode_x'],
+                    'emp_qrcode_y' => $validated['emp_qrcode_y'],
+                    'emp_qrcode_width' => $validated['emp_qrcode_width'],
+                    'emp_qrcode_height' => $validated['emp_qrcode_height'],
+                ]);
+                
+            // Log the update for debugging purposes
+            Log::info('QR code position updated', [
+                'template_id' => $id,
+                'new_position' => [
+                    'x' => $validated['emp_qrcode_x'],
+                    'y' => $validated['emp_qrcode_y'],
+                    'width' => $validated['emp_qrcode_width'],
+                    'height' => $validated['emp_qrcode_height'],
+                ]
+            ]);
+                
+            return response()->json([
+                'success' => true,
+                'message' => 'QR code position updated successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error updating QR code position: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating QR code position: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
