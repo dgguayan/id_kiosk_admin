@@ -6,7 +6,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { XCircle, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Table } from '@/components/ui/data-table';
 import { Pagination } from '@/components/ui/pagination';
-import { Search, Plus, Edit, Trash, UserCircle, Eye } from 'lucide-react';
+import { Search, Plus, Edit, Trash, UserCircle, Eye, CreditCard } from 'lucide-react';
 import { add, debounce } from 'lodash';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 
@@ -17,7 +17,6 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-// Update your Employee interface to include the image_person field
 interface Employee {
     uuid: number;
     id_no: string;
@@ -934,6 +933,13 @@ export default function Employee({
                                                 <Trash className="h-4 w-4" />
                                                 <span className="sr-only">Delete {employee.employee_firstname}</span>
                                             </button>
+                                            <button 
+                                                className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                                                onClick={() => router.visit(route('employee.id-preview', employee.uuid))}
+                                            >
+                                                <CreditCard className="h-4 w-4" />
+                                                <span className="sr-only">ID Card {employee.employee_firstname}</span>
+                                            </button>
                                         </div>
                                     </Table.Cell>
                                 </Table.Row>
@@ -1333,6 +1339,16 @@ export default function Employee({
                                                         }}
                                                     >
                                                         Edit Employee
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="inline-flex w-full justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 sm:ml-3 sm:w-auto"
+                                                        onClick={() => {
+                                                            closeViewModal();
+                                                            router.visit(route('employee.id-preview', employeeToView.uuid));
+                                                        }}
+                                                    >
+                                                        <CreditCard className="h-4 w-4 mr-2" /> View ID Card
                                                     </button>
                                                     <button
                                                         type="button"

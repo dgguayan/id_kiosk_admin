@@ -21,6 +21,9 @@ Route::resource('employee', EmployeeController::class)->middleware('auth');
 Route::post('/employees/bulk-destroy', [EmployeeController::class, 'bulkDestroy'])->name('employee.bulk-destroy');
 Route::put('/employee/{id}', [EmployeeController::class, 'update'])->name('employee.update');
 Route::get('/employee/image', [EmployeeController::class, 'serveImage'])->name('employee.image');
+// Add the ID card preview route
+Route::get('/employee/{id}/id-preview', [EmployeeController::class, 'idPreview'])->name('employee.id-preview')->middleware('auth');
+Route::get('/employee/placeholder-image', [EmployeeController::class, 'placeholderImage'])->name('employee.placeholder-image');
 
 //business unit
 Route::resource('business-unit', BusinessUnitController::class)->middleware('auth');

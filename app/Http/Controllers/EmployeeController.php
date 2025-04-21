@@ -12,6 +12,12 @@ use Inertia\Inertia;
 class EmployeeController extends Controller
 {
     /**
+     * Network path for storing images.
+     *
+     * @var string
+     */
+    protected $networkPath;
+    /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
@@ -440,5 +446,386 @@ class EmployeeController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete employees: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Display the ID card preview for the specified employee.
+     */
+    public function idPreview(string $id)
+    {
+        try {
+            // Find employee by UUID
+            $employee = Employee::where('uuid', $id)
+                ->with('businessUnit')
+                ->firstOrFail();
+                
+            // Format the employee object for frontend
+            $employee->businessunit_name = $employee->businessUnit ? $employee->businessUnit->businessunit_name : null;
+            
+            // Find template by business unit ID
+            $templateImage = DB::table('template_images')
+                ->where('businessunit_id', $employee->businessunit_id)
+                ->first();
+            
+            // Use the template ID from template_images if found, otherwise use default
+            $templateId = $templateImage ? $templateImage->id : 1;
+            
+            // Log the employee and template association
+            Log::info('ID Card preview details', [
+                'employee_uuid' => $id,
+                'employee_id' => $employee->id,
+                'businessunit_id' => $employee->businessunit_id,
+                'template_id' => $templateId
+            ]);
+            
+            // Get template images data from the database
+            $templateImages = $this->getTemplateImagesData($templateId);
+            
+            // Ensure the public/images directory exists
+            $imagesDir = public_path('images');
+            if (!file_exists($imagesDir)) {
+                mkdir($imagesDir, 0755, true);
+            }
+            
+            // Create default templates if they don't exist
+            $this->createDefaultTemplatesIfNeeded();
+            
+            // Get template paths with debug info
+            $frontTemplate = $this->getFrontTemplatePath($templateId);
+            $backTemplate = $this->getBackTemplatePath($templateId);
+            
+            // Log the template paths for debugging
+            Log::info('Template paths for ID Card preview:', [
+                'employee_id' => $employee->id,
+                'businessunit_id' => $employee->businessunit_id,
+                'template_id' => $templateId,
+                'front_template' => $frontTemplate,
+                'back_template' => $backTemplate
+            ]);
+            
+            return Inertia::render('Employee/IdCardPreview', [
+                'employee' => $employee,
+                'templateImages' => $templateImages,
+                'frontTemplate' => $frontTemplate,
+                'backTemplate' => $backTemplate,
+                'debug' => [
+                    'templateId' => $templateId,
+                    'businessunitId' => $employee->businessunit_id,
+                    'frontTemplatePath' => $frontTemplate,
+                    'backTemplatePath' => $backTemplate
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to load ID card preview: ' . $e->getMessage(), [
+                'exception' => $e,
+                'employee_uuid' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->route('employee.index')->with('error', 'Failed to load ID card preview: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Get template images data from the database.
+     */
+    private function getTemplateImagesData(int $templateId): array
+    {
+        try {
+            // First try to find template by direct ID
+            $templateData = DB::table('template_images')
+                ->where('id', $templateId)
+                ->first();
+            
+            // If not found, try by template_id column
+            if (!$templateData) {
+                $templateData = DB::table('template_images')
+                    ->where('template_id', $templateId)
+                    ->first();
+            }
+            
+            // Add detailed logging to understand what's happening
+            Log::info('Template lookup results', [
+                'template_id_requested' => $templateId,
+                'found' => !is_null($templateData),
+                'raw_data' => $templateData ? json_encode($templateData) : 'No template found'
+            ]);
+                
+            if ($templateData) {
+                // Convert to array but preserve integer values when they're 0
+                $result = (array) $templateData;
+                
+                // Log the specific QR code coordinates we're going to use
+                Log::info('QR code coordinates from database:', [
+                    'qrcode_x' => $result['emp_qrcode_x'] ?? null,
+                    'qrcode_y' => $result['emp_qrcode_y'] ?? null,
+                    'qrcode_width' => $result['emp_qrcode_width'] ?? null,
+                    'qrcode_height' => $result['emp_qrcode_height'] ?? null,
+                ]);
+                
+                return $result;
+            }
+            
+            // Log that we're using default values
+            Log::warning('No template found, using default positions', [
+                'template_id' => $templateId
+            ]);
+            
+            // Return complete set of default positions if no template is found
+            return [
+                'emp_img_x' => 193,
+                'emp_img_y' => 338,
+                'emp_img_height' => 265,
+                'emp_img_width' => 265,
+                'emp_name_x' => 341,
+                'emp_name_y' => 675,
+                'emp_pos_x' => 341,
+                'emp_pos_y' => 700,
+                'emp_idno_x' => 325,
+                'emp_idno_y' => 725,
+                'emp_sig_x' => 341,
+                'emp_sig_y' => 780,
+                'emp_qrcode_x' => 483, // Correct QR code coordinates
+                'emp_qrcode_y' => 88,
+                'emp_qrcode_width' => 150,
+                'emp_qrcode_height' => 150,
+                'emp_add_x' => 150,
+                'emp_add_y' => 225,
+                'emp_bday_x' => 150,
+                'emp_bday_y' => 257,
+                'emp_sss_x' => 150,
+                'emp_sss_y' => 283,
+                'emp_phic_x' => 150,
+                'emp_phic_y' => 308,
+                'emp_hdmf_x' => 150,
+                'emp_hdmf_y' => 333,
+                'emp_tin_x' => 150,
+                'emp_tin_y' => 360,
+                'emp_emergency_name_x' => 150,
+                'emp_emergency_name_y' => 626,
+                'emp_emergency_num_x' => 150,
+                'emp_emergency_num_y' => 680,
+                'emp_emergency_add_x' => 150,
+                'emp_emergency_add_y' => 738,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error getting template images data: ' . $e->getMessage());
+            // Return default values on error
+            return [
+                // Default values for QR code
+                'emp_qrcode_x' => 483, 
+                'emp_qrcode_y' => 88,
+                'emp_qrcode_width' => 150,
+                'emp_qrcode_height' => 150,
+            ];
+        }
+    }
+    
+    /**
+     * Get front template path with fallback to default.
+     */
+    private function getFrontTemplatePath(int $templateId): string 
+    {
+        $this->networkPath = env('NETWORK_IMAGE_PATH', '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\id_templates\\');
+        
+        try {
+            // First try to get the template from template_images table
+            $templateImage = DB::table('template_images')
+                ->where('id', $templateId)
+                ->first();
+                
+            if ($templateImage && !empty($templateImage->image_path)) {
+                // Check if the network path exists
+                $networkPath = '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\id_templates\\' . $templateImage->image_path;
+                if (file_exists($networkPath)) {
+                    // Use network.image route to serve the image
+                    return route('network.image', ['folder' => 'id_templates', 'filename' => $templateImage->image_path]);
+                }
+                
+                // If not in network path, check in storage
+                $storagePath = storage_path('app/public/images/id_templates/' . $templateImage->image_path);
+                if (file_exists($storagePath)) {
+                    return asset('storage/images/id_templates/' . $templateImage->image_path);
+                }
+            }
+            
+            // If no template_images record or path doesn't exist, try templates table
+            $template = DB::table('templates')
+                ->where('id', $templateId)
+                ->first();
+                
+            if ($template && !empty($template->image1)) {
+                // Check if the file exists in storage
+                $storagePath = storage_path('app/public/images/' . $template->image1);
+                if (file_exists($storagePath)) {
+                    return asset('storage/images/' . $template->image1);
+                }
+            }
+            
+            // Finally fall back to default template
+            $defaultPath = public_path('images/default_front_template.png');
+            if (file_exists($defaultPath)) {
+                return asset('images/default_front_template.png');
+            }
+            
+            // Create default template if it doesn't exist
+            $this->createDefaultTemplatesIfNeeded();
+            return asset('images/default_front_template.png');
+            
+        } catch (\Exception $e) {
+            Log::error('Error getting front template path: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'templateId' => $templateId
+            ]);
+            return asset('images/default_front_template.png');
+        }
+    }
+    
+    /**
+     * Get back template path with fallback to default.
+     */
+    private function getBackTemplatePath(int $templateId): string 
+    {
+        $this->networkPath = env('NETWORK_IMAGE_PATH', '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\id_templates\\');
+        
+        try {
+            // First try to get the template from template_images table
+            $templateImage = DB::table('template_images')
+                ->where('id', $templateId)
+                ->first();
+                
+            if ($templateImage && !empty($templateImage->image_path2)) {
+                // Check if the network path exists
+                $networkPath = '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\id_templates\\' . $templateImage->image_path2;
+                if (file_exists($networkPath)) {
+                    // Use network.image route to serve the image
+                    return route('network.image', ['folder' => 'id_templates', 'filename' => $templateImage->image_path2]);
+                }
+                
+                // If not in network path, check in storage
+                $storagePath = storage_path('app/public/images/id_templates/' . $templateImage->image_path2);
+                if (file_exists($storagePath)) {
+                    return asset('storage/images/id_templates/' . $templateImage->image_path2);
+                }
+            }
+            
+            // If no template_images record or path doesn't exist, try templates table
+            $template = DB::table('templates')
+                ->where('id', $templateId)
+                ->first();
+                
+            if ($template && !empty($template->image2)) {
+                // Check if the file exists in storage
+                $storagePath = storage_path('app/public/images/' . $template->image2);
+                if (file_exists($storagePath)) {
+                    return asset('storage/images/' . $template->image2);
+                }
+            }
+            
+            // Finally fall back to default template
+            $defaultPath = public_path('images/default_back_template.png');
+            if (file_exists($defaultPath)) {
+                return asset('images/default_back_template.png');
+            }
+            
+            // Create default template if it doesn't exist
+            $this->createDefaultTemplatesIfNeeded();
+            return asset('images/default_back_template.png');
+            
+        } catch (\Exception $e) {
+            Log::error('Error getting back template path: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'templateId' => $templateId
+            ]);
+            return asset('images/default_back_template.png');
+        }
+    }
+
+    /**
+     * Create default template files in the public directory.
+     */
+    private function createDefaultTemplatesIfNeeded()
+    {
+        // Define template files
+        $templates = [
+            'default_front_template.png' => [651, 1005, 'Front ID Template'],
+            'default_back_template.png' => [651, 1005, 'Back ID Template']
+        ];
+        
+        // Create each template if it doesn't exist
+        foreach ($templates as $filename => [$width, $height, $text]) {
+            $path = public_path('images/' . $filename);
+            
+            if (!file_exists($path)) {
+                // Create a simple placeholder image
+                $img = imagecreatetruecolor($width, $height);
+                $bgColor = imagecolorallocate($img, 255, 255, 255); // White background
+                $textColor = imagecolorallocate($img, 100, 100, 100); // Gray text
+                $borderColor = imagecolorallocate($img, 200, 200, 200); // Light gray border
+                
+                // Fill background white
+                imagefilledrectangle($img, 0, 0, $width - 1, $height - 1, $bgColor);
+                
+                // Draw border
+                imagerectangle($img, 0, 0, $width - 1, $height - 1, $borderColor);
+                
+                // Add template title text
+                $font = 5; // Built-in font (1-5)
+                $textWidth = strlen($text) * imagefontwidth($font);
+                $textX = ($width - $textWidth) / 2;
+                $textY = $height / 3;
+                imagestring($img, $font, $textX, $textY, $text, $textColor);
+                
+                // Add hint text
+                $hint = "This is a default template. Please upload a custom template.";
+                $hintWidth = strlen($hint) * imagefontwidth(2);
+                $hintX = ($width - $hintWidth) / 2;
+                $hintY = $height / 2;
+                imagestring($img, 2, $hintX, $hintY, $hint, $textColor);
+                
+                // Save the image
+                if (!file_exists(dirname($path))) {
+                    mkdir(dirname($path), 0755, true);
+                }
+                
+                imagepng($img, $path);
+                imagedestroy($img);
+                
+                Log::info("Created default template image: $filename");
+            }
+        }
+    }
+
+    /**
+     * Serve a placeholder image when employee images are not found.
+     */
+    public function placeholderImage()
+    {
+        $path = public_path('images/placeholder.png');
+        
+        if (!file_exists($path)) {
+            // Ensure the directory exists
+            if (!file_exists(dirname($path))) {
+                mkdir(dirname($path), 0755, true);
+            }
+
+            // Create a simple placeholder image
+            $img = imagecreatetruecolor(250, 250);
+            $bg = imagecolorallocate($img, 240, 240, 240);
+            $textcolor = imagecolorallocate($img, 100, 100, 100);
+            
+            imagefilledrectangle($img, 0, 0, 249, 249, $bg);
+            imagestring($img, 5, 70, 120, 'No Image', $textcolor);
+            
+            imagepng($img, $path);
+            imagedestroy($img);
+            
+            Log::info("Created placeholder image");
+        }
+        
+        return response()->file($path, [
+            'Content-Type' => 'image/png',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+        ]);
     }
 }

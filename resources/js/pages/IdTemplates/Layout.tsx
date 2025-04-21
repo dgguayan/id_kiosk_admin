@@ -192,6 +192,17 @@ export default function IdTemplateLayout({
 
     // Setup canvases
     useEffect(() => {
+        if (frontCanvasRef.current) {
+            frontCanvasRef.current.width = 651;
+            frontCanvasRef.current.height = 1005;
+        }
+        if (backCanvasRef.current) {
+            backCanvasRef.current.width = 651;
+            backCanvasRef.current.height = 1005;
+        }
+    }, []);
+
+    useEffect(() => {
         const loadImages = async () => {
             let frontLoaded = false;
             let backLoaded = false;
@@ -269,31 +280,50 @@ export default function IdTemplateLayout({
             width = coordinates.emp_qrcode_width;
             height = coordinates.emp_qrcode_height;
         } else if (element === 'emp_sig') {
-            width = 120;
-            height = 30;
+            width = 273;
+            height = 193;
         } else if (element.includes('emergency')) {
             width = 200;
-            height = 15;
+            height = 20;
         }
 
-        // Center the bounds around the coordinate point for most elements
-        if (element !== 'emp_img') {
+        // For QR code and Photo, use the coordinate point as the top-left corner
+        if (element === 'emp_img' || element === 'emp_qrcode') {
             return {
-                left: x - width / 2,
-                top: y - height / 2,
-                right: x + width / 2,
-                bottom: y + height / 2,
+                left: x,
+                top: y,
+                right: x + width,
+                bottom: y + height,
                 width,
                 height,
             };
         }
-
-        // For photo, use the coordinate point as the top-left corner
+        
+        // For most text elements on the back side of the card, use left alignment
+        // These are elements that should be left-aligned in the ID card
+        const backTextElements = [
+            'emp_add', 'emp_bday', 'emp_sss', 'emp_phic', 'emp_hdmf', 'emp_tin',
+            'emp_emergency_name', 'emp_emergency_num', 'emp_emergency_add'
+        ];
+        
+        if (backTextElements.includes(element)) {
+            // For back text elements, use left alignment with vertical centering
+            return {
+                left: x,
+                top: y - height/2,
+                right: x + width,
+                bottom: y + height/2,
+                width,
+                height,
+            };
+        }
+        
+        // For remaining elements (front side text), center them around the coordinate point
         return {
-            left: x,
-            top: y,
-            right: x + width,
-            bottom: y + height,
+            left: x - width / 2,
+            top: y - height / 2,
+            right: x + width / 2,
+            bottom: y + height / 2,
             width,
             height,
         };
@@ -459,29 +489,106 @@ export default function IdTemplateLayout({
     // Unified function to draw an element
     const drawElement = (ctx: CanvasRenderingContext2D, element: ElementType, color: string) => {
         const bounds = getElementBounds(element);
+        const backTextElements = [
+            'emp_add', 'emp_bday', 'emp_sss', 'emp_phic', 'emp_hdmf', 'emp_tin',
+            'emp_emergency_name', 'emp_emergency_num', 'emp_emergency_add'
+        ];
+
+        // For elements that are centered in IdCardPreview, make sure they're centered here too
+        if (element === 'emp_name' || element === 'emp_pos' || element === 'emp_idno') {
+            // Draw centered text using the same approach as IdCardPreview
+            ctx.textAlign = "center";
+        } else if (backTextElements.includes(element)) {
+            // Draw left-aligned text for back elements
+            ctx.textAlign = "center";
+        }
+        
+        // Make sure the text baseline is consistent
+        ctx.textBaseline = "middle";
 
         // Use different drawing methods for different element types
-        if (element === 'emp_img') {
-            // For the photo, draw a rectangle
+        if (element === 'emp_img' || element === 'emp_qrcode') {
+            // For the photo and QR code, draw a rectangle at the exact position (top-left)
             ctx.fillStyle = color;
             ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
             ctx.strokeStyle = '#000';
             ctx.strokeRect(bounds.left, bounds.top, bounds.width, bounds.height);
-        } else if (element === 'emp_qrcode') {
-            // For the QR code, draw a centered rectangle
-            const centerX = coordinates[`${element}_x` as keyof TemplateCoordinates] as number;
-            const centerY = coordinates[`${element}_y` as keyof TemplateCoordinates] as number;
-            const width = coordinates.emp_qrcode_width;
-            const height = coordinates.emp_qrcode_height;
-
-            ctx.fillStyle = color;
-            ctx.fillRect(centerX - width / 2, centerY - height / 2, width, height);
-            ctx.strokeStyle = '#000';
-            ctx.strokeRect(centerX - width / 2, centerY - height / 2, width, height);
-        } else {
-            // For text elements, draw a simple rectangle centered at the point
+        } else if (backTextElements.includes(element)) {
+            // For text elements on the back side, draw left-aligned with vertical centering
             ctx.fillStyle = color;
             ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
+            
+            // Add sample text inside the element box - using same font as IdCardPreview
+            ctx.fillStyle = '#000000';
+            ctx.font = '25px "Calibri", "Roboto", sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            
+            // Display sample text based on element type
+            let sampleText = elementMeta[element].label;
+            if (element === 'emp_add') {
+                sampleText = "123 Sample Street, City";
+            } else if (element === 'emp_bday') {
+                sampleText = "January 1, 1990";
+            } else if (element === 'emp_sss') {
+                sampleText = "12-3456789-0";
+            } else if (element === 'emp_phic') {
+                sampleText = "98-7654321-0";
+            } else if (element === 'emp_hdmf') {
+                sampleText = "1234-5678-9012";
+            } else if (element === 'emp_tin') {
+                sampleText = "123-456-789-000";
+            } else if (element === 'emp_emergency_name') {
+                sampleText = "Emergency Contact";
+            } else if (element === 'emp_emergency_num') {
+                sampleText = "(123) 456-7890";
+            } else if (element === 'emp_emergency_add') {
+                sampleText = "456 Emergency Address, City";
+            }
+            
+            ctx.fillText(sampleText, bounds.left + 5, bounds.top + bounds.height/2);
+            
+            // Show vertical center line to help visualize alignment
+            if (draggedElement === element) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+                ctx.setLineDash([2, 2]);
+                const centerY = bounds.top + bounds.height/2;
+                ctx.beginPath();
+                ctx.moveTo(bounds.left, centerY);
+                ctx.lineTo(bounds.left + bounds.width, centerY);
+                ctx.stroke();
+                ctx.restore();
+            }
+        } else {
+            // For text elements on the front, center them around the coordinate point
+            ctx.fillStyle = color;
+            ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
+            
+            // Add sample text inside the element box - using same font as IdCardPreview
+            ctx.fillStyle = '#000000';
+            
+            // Display sample text based on element type with appropriate font settings
+            let sampleText = elementMeta[element].label;
+            
+            if (element === 'emp_name') {
+                ctx.font = 'bold 30px "Calibri", "Roboto", sans-serif';
+                sampleText = "John Doe";
+                ctx.textBaseline = "middle";
+            } else if (element === 'emp_pos') {
+                ctx.font = 'italic 25px "Calibri", "Roboto", sans-serif';
+                sampleText = "Software Developer";
+            } else if (element === 'emp_idno') {
+                ctx.font = 'bold 18px "Calibri", "Roboto", sans-serif';
+                sampleText = "EMP-12345";
+            } else if (element === 'emp_sig') {
+                ctx.font = '18px "Calibri", "Roboto", sans-serif';
+                sampleText = "Signature";
+            }
+            
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(sampleText, bounds.left + bounds.width/2, bounds.top + bounds.height/2);
         }
 
         // If this element is being dragged, add a visual indicator
@@ -494,7 +601,14 @@ export default function IdTemplateLayout({
             ctx.fillStyle = '#ff0000';
             ctx.font = '12px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText(elementMeta[element].label, bounds.left + bounds.width / 2, bounds.top - 5);
+            
+            // For back text elements, show label above the left side
+            if (backTextElements.includes(element)) {
+                ctx.fillText(elementMeta[element].label, bounds.left + 40, bounds.top - 5);
+            } else {
+                // For other elements, center the label
+                ctx.fillText(elementMeta[element].label, bounds.left + bounds.width / 2, bounds.top - 5);
+            }
 
             ctx.lineWidth = 1;
         }
@@ -864,7 +978,6 @@ export default function IdTemplateLayout({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Front Canvas */}
                         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 text-center">
-                            <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Front Template</h4>
                             <div className="flex items-center justify-center">
                                 <canvas
                                     ref={frontCanvasRef}
@@ -886,7 +999,6 @@ export default function IdTemplateLayout({
 
                         {/* Back Canvas */}
                         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 text-center">
-                            <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Back Template</h4>
                             <div className="flex items-center justify-center">
                                 <canvas
                                     ref={backCanvasRef}
@@ -1029,7 +1141,7 @@ export default function IdTemplateLayout({
                                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Birthdate</span>
                                     <button
                                         className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                                        onClick={() => centerElement('emp_bdate')}
+                                        onClick={() => centerElement('emp_bday')}
                                     >
                                         <AlignCenter className="h-3 w-3 mr-1" /> Center
                                     </button>
@@ -1043,7 +1155,7 @@ export default function IdTemplateLayout({
                                             type="number"
                                             id="birthdate_x"
                                             value={coordinates.emp_bday_x}
-                                            onChange={(e) => updateElementPosition('emp_bdate', 'x', e.target.value)}
+                                            onChange={(e) => updateElementPosition('emp_bday', 'x', e.target.value)}
                                             className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
                                         />
                                     </div>
@@ -1055,7 +1167,7 @@ export default function IdTemplateLayout({
                                             type="number"
                                             id="birthdate_y"
                                             value={coordinates.emp_bday_y}
-                                            onChange={(e) => updateElementPosition('emp_bdate', 'y', e.target.value)}
+                                            onChange={(e) => updateElementPosition('emp_bday', 'y', e.target.value)}
                                             className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
                                         />
                                     </div>
@@ -1224,7 +1336,7 @@ export default function IdTemplateLayout({
                                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Emergency Contact</span>
                                     <button
                                         className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                                        onClick={() => centerElement('emp_emergency')}
+                                        onClick={() => centerElement('emp_emergency_name')}
                                     >
                                         <AlignCenter className="h-3 w-3 mr-1" /> Center
                                     </button>
@@ -1238,7 +1350,7 @@ export default function IdTemplateLayout({
                                             type="number"
                                             id="emergency_contact_x"
                                             value={coordinates.emp_emergency_name_x}
-                                            onChange={(e) => updateElementPosition('emp_emergency', 'x', e.target.value)}
+                                            onChange={(e) => updateElementPosition('emp_emergency_name', 'x', e.target.value)}
                                             className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
                                         />
                                     </div>
@@ -1250,7 +1362,7 @@ export default function IdTemplateLayout({
                                             type="number"
                                             id="emergency_contact_y"
                                             value={coordinates.emp_emergency_name_y}
-                                            onChange={(e) => updateElementPosition('emp_emergency', 'y', e.target.value)}
+                                            onChange={(e) => updateElementPosition('emp_emergency_name', 'y', e.target.value)}
                                             className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
                                         />
                                     </div>
@@ -1263,7 +1375,7 @@ export default function IdTemplateLayout({
                                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Emergency Number</span>
                                     <button
                                         className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                                        onClick={() => centerElement('emp_emergency_number')}
+                                        onClick={() => centerElement('emp_emergency_num')}
                                     >
                                         <AlignCenter className="h-3 w-3 mr-1" /> Center
                                     </button>
@@ -1277,7 +1389,7 @@ export default function IdTemplateLayout({
                                             type="number"
                                             id="emergency_number_x"
                                             value={coordinates.emp_emergency_num_x}
-                                            onChange={(e) => updateElementPosition('emp_emergency_number', 'x', e.target.value)}
+                                            onChange={(e) => updateElementPosition('emp_emergency_num', 'x', e.target.value)}
                                             className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
                                         />
                                     </div>
@@ -1289,7 +1401,7 @@ export default function IdTemplateLayout({
                                             type="number"
                                             id="emergency_number_y"
                                             value={coordinates.emp_emergency_num_y}
-                                            onChange={(e) => updateElementPosition('emp_emergency_number', 'y', e.target.value)}
+                                            onChange={(e) => updateElementPosition('emp_emergency_num', 'y', e.target.value)}
                                             className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
                                         />
                                     </div>
@@ -1302,7 +1414,7 @@ export default function IdTemplateLayout({
                                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Emergency Address</span>
                                     <button
                                         className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                                        onClick={() => centerElement('emp_emergency_address')}
+                                        onClick={() => centerElement('emp_emergency_add')}
                                     >
                                         <AlignCenter className="h-3 w-3 mr-1" /> Center
                                     </button>
@@ -1316,7 +1428,7 @@ export default function IdTemplateLayout({
                                             type="number"
                                             id="emergency_address_x"
                                             value={coordinates.emp_emergency_add_x}
-                                            onChange={(e) => updateElementPosition('emp_emergency_address', 'x', e.target.value)}
+                                            onChange={(e) => updateElementPosition('emp_emergency_add', 'x', e.target.value)}
                                             className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
                                         />
                                     </div>
@@ -1328,7 +1440,7 @@ export default function IdTemplateLayout({
                                             type="number"
                                             id="emergency_address_y"
                                             value={coordinates.emp_emergency_add_y}
-                                            onChange={(e) => updateElementPosition('emp_emergency_address', 'y', e.target.value)}
+                                            onChange={(e) => updateElementPosition('emp_emergency_add', 'y', e.target.value)}
                                             className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
                                         />
                                     </div>
