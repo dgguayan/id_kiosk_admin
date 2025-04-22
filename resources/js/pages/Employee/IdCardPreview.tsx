@@ -273,6 +273,148 @@ const IdCardPreview: React.FC<IdCardPreviewProps> = ({ employee, templateImages,
         }
     }, [loadedImages, templateImages]);
 
+    // Enhanced drawWrappedText function that considers card boundaries
+    const drawWrappedText = (
+        ctx: CanvasRenderingContext2D, 
+        text: string, 
+        x: number, 
+        y: number, 
+        maxWidth?: number, 
+        maxLines: number = 2, 
+        lineHeight: number = 25
+    ) => {
+        // Calculate available width based on position
+        const cardWidth = ctx.canvas.width; // 651px
+        const margin = 20; // Safety margin from the edge of the card
+        
+        // Calculate how much space is available to the right of this position
+        const availableWidth = cardWidth - x - margin;
+        
+        // Use the smaller of maxWidth or availableWidth
+        const effectiveMaxWidth = maxWidth ? Math.min(maxWidth, availableWidth) : availableWidth;
+        
+        // Save original font size
+        const originalFont = ctx.font;
+        let fontSize = parseInt(originalFont.match(/\d+/)?.[0] || "25");
+        let words = text.split(' ');
+        let line = '';
+        let lines: string[] = [];
+        
+        // First try with current font size
+        for (let n = 0; n < words.length; n++) {
+            const testLine = line + words[n] + ' ';
+            const metrics = ctx.measureText(testLine);
+            
+            if (metrics.width > effectiveMaxWidth && n > 0) {
+                lines.push(line);
+                line = words[n] + ' ';
+            } else {
+                line = testLine;
+            }
+        }
+        lines.push(line);
+        
+        // If we have too many lines or the text is too wide, reduce font size
+        if (lines.length > maxLines || ctx.measureText(lines[0]).width > effectiveMaxWidth) {
+            // Calculate font size reduction factor
+            let reductionFactor = 0.9; // Start with 10% reduction
+            
+            if (lines.length > maxLines) {
+                // More aggressive reduction if we have too many lines
+                reductionFactor = Math.min(reductionFactor, maxLines / lines.length * 0.9);
+            }
+            
+            // If first line is too wide, calculate additional reduction
+            const widestLine = lines.reduce((max, line) => 
+                Math.max(max, ctx.measureText(line).width), 0);
+            
+            if (widestLine > effectiveMaxWidth) {
+                const widthReduction = effectiveMaxWidth / widestLine * 0.95;
+                reductionFactor = Math.min(reductionFactor, widthReduction);
+            }
+            
+            // Apply font size reduction with minimum size limit
+            fontSize = Math.max(12, Math.floor(fontSize * reductionFactor));
+            ctx.font = `${fontSize}px "Calibri", "Roboto", sans-serif`;
+            
+            // Reset and try again with smaller font
+            lines = [];
+            line = '';
+            
+            for (let n = 0; n < words.length; n++) {
+                const testLine = line + words[n] + ' ';
+                const metrics = ctx.measureText(testLine);
+                
+                if (metrics.width > effectiveMaxWidth && n > 0) {
+                    lines.push(line);
+                    line = words[n] + ' ';
+                    // If we're still going over maxLines, truncate
+                    if (lines.length >= maxLines) {
+                        lines[maxLines-1] = lines[maxLines-1].trim() + '...';
+                        break;
+                    }
+                } else {
+                    line = testLine;
+                }
+            }
+            
+            if (lines.length < maxLines) {
+                lines.push(line);
+            }
+        }
+        
+        // Draw the text lines
+        for (let i = 0; i < Math.min(lines.length, maxLines); i++) {
+            ctx.fillText(lines[i], x, y + (i * lineHeight));
+        }
+        
+        // Restore original font
+        ctx.font = originalFont;
+        
+        // Debug indicator (uncomment if needed during development)
+        // ctx.strokeStyle = 'rgba(255, 0, 0, 0.3)';
+        // ctx.strokeRect(x, y - lineHeight/2, effectiveMaxWidth, lineHeight * maxLines);
+        
+        // Return the number of lines actually drawn
+        return Math.min(lines.length, maxLines);
+    };
+
+    // Add this function to your component
+    const isBackgroundDark = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number = 10, height: number = 10): boolean => {
+        try {
+            // Sample a small area around the text position
+            const imageData = ctx.getImageData(
+                Math.max(0, x - width/2),
+                Math.max(0, y - height/2),
+                Math.min(width, ctx.canvas.width - x + width/2),
+                Math.min(height, ctx.canvas.height - y + height/2)
+            );
+            
+            // Calculate average brightness
+            let totalBrightness = 0;
+            const pixels = imageData.data.length / 4;
+            
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                const r = imageData.data[i];
+                const g = imageData.data[i + 1];
+                const b = imageData.data[i + 2];
+                
+                // Calculate perceived brightness using the luminosity formula
+                // (0.299*R + 0.587*G + 0.114*B)
+                const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
+                totalBrightness += brightness;
+            }
+            
+            const averageBrightness = totalBrightness / pixels;
+            
+            // Consider dark if average brightness is below threshold (0-255, 128 is middle)
+            return averageBrightness < 128;
+        } catch (error) {
+            console.error("Error checking background darkness:", error);
+            return false; // Default to light background if there's an error
+        }
+    };
+
     // Helper function to render the front canvas
     const renderFrontCanvas = (frontImg: HTMLImageElement, employeeImg?: HTMLImageElement, signatureImg?: HTMLImageElement) => {
         const canvas = frontCanvasRef.current;
@@ -299,45 +441,114 @@ const IdCardPreview: React.FC<IdCardPreviewProps> = ({ employee, templateImages,
                 ctx.drawImage(employeeImg, x, y, width, height);
             }
             
-            // Draw employee name - using center coordinates
+            // Draw employee name with dynamic color
             const empNameX = templateImages.emp_name_x || 341;
             const empNameY = templateImages.emp_name_y || 675;
             const fullName = `${employee.employee_firstname} ${employee.employee_middlename || ''} ${employee.employee_lastname} ${employee.employee_name_extension || ''}`.trim();
+
+            // Check if background is dark and set text color accordingly
+            const nameAreaIsDark = isBackgroundDark(ctx, empNameX, empNameY, 150, 30);
+            ctx.fillStyle = nameAreaIsDark ? 'white' : 'black';
             ctx.font = 'bold 30px "Calibri", "Roboto", sans-serif';
             ctx.textAlign = "center";
-            ctx.textBaseline = "middle"; // This ensures vertical centering
+            ctx.textBaseline = "middle";
             ctx.fillText(fullName, empNameX, empNameY);
-            
-            // Draw position - using center coordinates
+
+            // Draw position with dynamic color
             const empPosX = templateImages.emp_pos_x || 341;
             const empPosY = templateImages.emp_pos_y || 700;
+            const posAreaIsDark = isBackgroundDark(ctx, empPosX, empPosY, 150, 30);
+            ctx.fillStyle = posAreaIsDark ? 'white' : 'black';
             ctx.font = 'italic 25px "Calibri", "Roboto", sans-serif';
             ctx.textAlign = "center";
-            ctx.textBaseline = "middle"; // This ensures vertical centering
             ctx.fillText(employee.position || 'N/A', empPosX, empPosY);
-            
-            // Draw ID number
+
+            // Draw ID number with dynamic color
             const empIdNoX = templateImages.emp_idno_x || 325;
             const empIdNoY = templateImages.emp_idno_y || 725;
+            const idAreaIsDark = isBackgroundDark(ctx, empIdNoX, empIdNoY, 100, 30);
+            ctx.fillStyle = idAreaIsDark ? 'white' : 'black';
             ctx.font = 'bold 18px "Calibri", "Roboto", sans-serif';
             ctx.textAlign = "center";
             ctx.fillText(employee.id_no, empIdNoX, empIdNoY);
             
-            // Draw signature - already adjusts for center coordinates
+            // Draw signature with color inversion on dark backgrounds
             if (signatureImg) {
                 const signatureWidth = 273;
                 const signatureHeight = 193;
                 const empSigX = templateImages.emp_sig_x || 341;
                 const empSigY = templateImages.emp_sig_y || 780;
                 
-                // Already correctly adjusted for center point
-                ctx.drawImage(
-                    signatureImg, 
-                    empSigX - (signatureWidth / 2), 
-                    empSigY - (signatureHeight / 2), 
-                    signatureWidth, 
-                    signatureHeight
-                );
+                // Check if signature area is dark
+                const sigAreaIsDark = isBackgroundDark(ctx, empSigX, empSigY, signatureWidth / 2, signatureHeight / 2);
+                
+                if (sigAreaIsDark) {
+                    // Create an offscreen canvas to invert the signature
+                    const offscreenCanvas = document.createElement('canvas');
+                    offscreenCanvas.width = signatureWidth;
+                    offscreenCanvas.height = signatureHeight;
+                    const offCtx = offscreenCanvas.getContext('2d');
+                    
+                    if (offCtx) {
+                        // Draw the signature on the offscreen canvas
+                        offCtx.drawImage(
+                            signatureImg, 
+                            0, 
+                            0, 
+                            signatureWidth, 
+                            signatureHeight
+                        );
+                        
+                        // Invert the colors
+                        const imageData = offCtx.getImageData(0, 0, signatureWidth, signatureHeight);
+                        const data = imageData.data;
+                        
+                        for (let i = 0; i < data.length; i += 4) {
+                            // For signature, we typically want to keep transparency and just invert black to white
+                            if (data[i + 3] > 0) { // If pixel is not fully transparent
+                                // Detect if the pixel is dark (signature)
+                                const isDark = (data[i] + data[i + 1] + data[i + 2]) / 3 < 128;
+                                
+                                if (isDark) {
+                                    // Invert dark pixels to white
+                                    data[i] = 255;     // R
+                                    data[i + 1] = 255; // G
+                                    data[i + 2] = 255; // B
+                                    // Keep original alpha
+                                }
+                            }
+                        }
+                        
+                        offCtx.putImageData(imageData, 0, 0);
+                        
+                        // Draw the inverted signature on the main canvas
+                        ctx.drawImage(
+                            offscreenCanvas, 
+                            empSigX - (signatureWidth / 2), 
+                            empSigY - (signatureHeight / 2), 
+                            signatureWidth, 
+                            signatureHeight
+                        );
+                    } else {
+                        // Fallback to normal signature if offscreen context failed
+                        ctx.drawImage(
+                            signatureImg, 
+                            empSigX - (signatureWidth / 2), 
+                            empSigY - (signatureHeight / 2), 
+                            signatureWidth, 
+                            signatureHeight
+                        );
+                    }
+                } else {
+                    // Default drawing for non-dark backgrounds
+                    ctx.drawImage(
+                        signatureImg, 
+                        empSigX - (signatureWidth / 2), 
+                        empSigY - (signatureHeight / 2), 
+                        signatureWidth, 
+                        signatureHeight
+                    );
+                }
             }
         } catch (error) {
             console.error("Error rendering front canvas:", error);
@@ -377,10 +588,11 @@ const IdCardPreview: React.FC<IdCardPreviewProps> = ({ employee, templateImages,
             ctx.textAlign = "left";
             ctx.textBaseline = "middle"; // Important for proper vertical alignment
             
-            // Draw address
+            // Draw address with dynamically calculated width
             const empAddX = templateImages.emp_add_x || 150;
             const empAddY = templateImages.emp_add_y || 225;
-            ctx.fillText(employee.address || 'N/A', empAddX, empAddY);
+            ctx.font = '25px "Calibri", "Roboto", sans-serif';
+            drawWrappedText(ctx, employee.address || 'N/A', empAddX, empAddY, undefined, 2);
             
             // Draw birthdate with vertical centering
             const empBdayX = templateImages.emp_bday_x || 150;
@@ -432,10 +644,10 @@ const IdCardPreview: React.FC<IdCardPreviewProps> = ({ employee, templateImages,
             const empEmergencyNumY = templateImages.emp_emergency_num_y || 680;
             ctx.fillText(employee.emergency_contact_number || 'N/A', empEmergencyNumX, empEmergencyNumY);
             
-            // Draw emergency contact address
+            // Draw emergency contact address with dynamically calculated width
             const empEmergencyAddX = templateImages.emp_emergency_add_x || 150;
             const empEmergencyAddY = templateImages.emp_emergency_add_y || 738;
-            ctx.fillText(employee.emergency_address || 'N/A', empEmergencyAddX, empEmergencyAddY);
+            drawWrappedText(ctx, employee.emergency_address || 'N/A', empEmergencyAddX, empEmergencyAddY, undefined, 2);
         } catch (error) {
             console.error("Error rendering back canvas:", error);
             setErrorMessage("Error rendering ID card. Please try again later.");
