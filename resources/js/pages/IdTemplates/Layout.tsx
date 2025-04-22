@@ -158,6 +158,10 @@ export default function IdTemplateLayout({
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
+    // Resizing state
+    const [isResizing, setIsResizing] = useState(false);
+    const [resizeCorner, setResizeCorner] = useState<'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight' | null>(null);
+
     // Element metadata lookup
     const elementMeta: Record<ElementType, ElementMeta> = {
         emp_img: { label: 'Photo', side: 'front', width: coordinates.emp_img_width, height: coordinates.emp_img_height },
@@ -347,6 +351,36 @@ export default function IdTemplateLayout({
         const x = (e.clientX - rect.left) * scaleX;
         const y = (e.clientY - rect.top) * scaleY;
 
+        // Check for resize handles on the employee image (front side only)
+        if (side === 'front') {
+            const imgBounds = getElementBounds('emp_img');
+            const handleSize = 10;
+            
+            // Check each corner for resize handles
+            const isInTopLeft = Math.abs(x - imgBounds.left) <= handleSize && 
+                               Math.abs(y - imgBounds.top) <= handleSize;
+            const isInTopRight = Math.abs(x - (imgBounds.left + imgBounds.width)) <= handleSize && 
+                                Math.abs(y - imgBounds.top) <= handleSize;
+            const isInBottomLeft = Math.abs(x - imgBounds.left) <= handleSize && 
+                                  Math.abs(y - (imgBounds.top + imgBounds.height)) <= handleSize;
+            const isInBottomRight = Math.abs(x - (imgBounds.left + imgBounds.width)) <= handleSize && 
+                                   Math.abs(y - (imgBounds.top + imgBounds.height)) <= handleSize;
+            
+            if (isInTopLeft || isInTopRight || isInBottomLeft || isInBottomRight) {
+                setIsResizing(true);
+                setDraggedElement('emp_img');
+                
+                if (isInTopLeft) setResizeCorner('topLeft');
+                else if (isInTopRight) setResizeCorner('topRight');
+                else if (isInBottomLeft) setResizeCorner('bottomLeft');
+                else setResizeCorner('bottomRight');
+                
+                // Store the initial mouse position for delta calculation
+                setDragOffset({ x, y });
+                return; // Exit early - we're resizing not dragging
+            }
+        }
+
         // Check which element was clicked
         const elements = Object.keys(elementMeta) as ElementType[];
         for (let i = elements.length - 1; i >= 0; i--) {
@@ -371,49 +405,165 @@ export default function IdTemplateLayout({
         }
     };
 
-    // Handle mouse move for dragging
+    // Handle mouse move for dragging and resizing
     const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        if (!isDragging || !draggedElement) return;
+        if ((!isDragging && !isResizing) || !draggedElement) return;
 
         const canvas = e.currentTarget;
         const rect = canvas.getBoundingClientRect();
-
-        // Calculate the actual position on the canvas considering scaling
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
 
-        let x = (e.clientX - rect.left) * scaleX;
-        let y = (e.clientY - rect.top) * scaleY;
-
-        // Adjust by drag offset
-        if (draggedElement === 'emp_img' || draggedElement === 'emp_qrcode') {
-            x -= dragOffset.x;
-            y -= dragOffset.y;
+        // Handle resizing
+        if (isResizing && draggedElement === 'emp_img' && resizeCorner) {
+            // Get current position and dimensions
+            const currentX = coordinates.emp_img_x;
+            const currentY = coordinates.emp_img_y;
+            const currentWidth = coordinates.emp_img_width;
+            const currentHeight = coordinates.emp_img_height;
+            
+            // Calculate changes based on movement
+            const deltaX = x - dragOffset.x;
+            const deltaY = y - dragOffset.y;
+            
+            // Update coordinates based on which corner is being dragged
+            let newX = currentX;
+            let newY = currentY;
+            let newWidth = currentWidth;
+            let newHeight = currentHeight;
+            
+            switch (resizeCorner) {
+                case 'topLeft':
+                    newX = Math.min(currentX + deltaX, currentX + currentWidth - 50);
+                    newY = Math.min(currentY + deltaY, currentY + currentHeight - 50);
+                    newWidth = currentWidth - deltaX;
+                    newHeight = currentHeight - deltaY;
+                    break;
+                case 'topRight':
+                    newY = Math.min(currentY + deltaY, currentY + currentHeight - 50);
+                    newWidth = currentWidth + deltaX;
+                    newHeight = currentHeight - deltaY;
+                    break;
+                case 'bottomLeft':
+                    newX = Math.min(currentX + deltaX, currentX + currentWidth - 50);
+                    newWidth = currentWidth - deltaX;
+                    newHeight = currentHeight + deltaY;
+                    break;
+                case 'bottomRight':
+                    newWidth = currentWidth + deltaX;
+                    newHeight = currentHeight + deltaY;
+                    break;
+            }
+            
+            // Ensure minimum size
+            newWidth = Math.max(50, newWidth);
+            newHeight = Math.max(50, newHeight);
+            
+            // Update coordinates state
+            setCoordinates(prev => ({
+                ...prev,
+                emp_img_x: Math.round(newX),
+                emp_img_y: Math.round(newY),
+                emp_img_width: Math.round(newWidth),
+                emp_img_height: Math.round(newHeight)
+            }));
+            
+            // Update drag offset for next move
+            setDragOffset({ x, y });
+            
+            return;
         }
+        
+        // Existing dragging code...
+        if (isDragging && draggedElement) {
+            const backTextElements = [
+                'emp_add', 'emp_bday', 'emp_sss', 'emp_phic', 'emp_hdmf', 'emp_tin',
+                'emp_emergency_name', 'emp_emergency_num', 'emp_emergency_add'
+            ];
+            
+            let newX, newY;
+            
+            // Handle different dragging behaviors based on element type
+            if (draggedElement === 'emp_img' || draggedElement === 'emp_qrcode') {
+                // For boxes, calculate position by subtracting the offset from the mouse position
+                newX = Math.max(0, Math.min(x - dragOffset.x, canvas.width - 50));
+                newY = Math.max(0, Math.min(y - dragOffset.y, canvas.height - 50));
+            } else if (backTextElements.includes(draggedElement)) {
+                // For back text elements - direct position
+                newX = Math.max(0, Math.min(x, canvas.width - 50));
+                newY = Math.max(0, Math.min(y, canvas.height - 50));
+            } else {
+                // For front centered elements
+                newX = Math.max(0, Math.min(x, canvas.width));
+                newY = Math.max(0, Math.min(y, canvas.height));
+            }
 
-        // Restrict to canvas bounds
-        x = Math.max(0, Math.min(x, canvas.width));
-        y = Math.max(0, Math.min(y, canvas.height));
-
-        // Update coordinates
-        setCoordinates((prev) => ({
-            ...prev,
-            [`${draggedElement}_x`]: Math.round(x),
-            [`${draggedElement}_y`]: Math.round(y),
-        }));
+            // Update the element coordinates
+            setCoordinates(prev => ({
+                ...prev,
+                [`${draggedElement}_x`]: Math.round(newX),
+                [`${draggedElement}_y`]: Math.round(newY)
+            }));
+        }
     };
 
     // Handle mouse up to end dragging
     const handleCanvasMouseUp = () => {
         setIsDragging(false);
+        setIsResizing(false);
+        setResizeCorner(null);
         setDraggedElement(null);
     };
 
     // Handle mouse leave to end dragging
     const handleCanvasMouseLeave = () => {
-        if (isDragging) {
+        if (isDragging || isResizing) {
             setIsDragging(false);
+            setIsResizing(false);
+            setResizeCorner(null);
             setDraggedElement(null);
+        }
+    };
+
+    // Add this to your component
+    const handleCanvasMouseOver = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        if (!frontCanvasRef.current) return;
+        
+        const canvas = e.currentTarget;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+        
+        const imgBounds = getElementBounds('emp_img');
+        const handleSize = 10;
+        
+        // Check if cursor is over any resize handle
+        const isInTopLeft = Math.abs(x - imgBounds.left) <= handleSize && Math.abs(y - imgBounds.top) <= handleSize;
+        const isInTopRight = Math.abs(x - (imgBounds.left + imgBounds.width)) <= handleSize && Math.abs(y - imgBounds.top) <= handleSize;
+        const isInBottomLeft = Math.abs(x - imgBounds.left) <= handleSize && Math.abs(y - (imgBounds.top + imgBounds.height)) <= handleSize;
+        const isInBottomRight = Math.abs(x - (imgBounds.left + imgBounds.width)) <= handleSize && Math.abs(y - (imgBounds.top + imgBounds.height)) <= handleSize;
+        
+        if (isInTopLeft || isInBottomRight) {
+            canvas.style.cursor = 'nwse-resize';
+        } else if (isInTopRight || isInBottomLeft) {
+            canvas.style.cursor = 'nesw-resize';
+        } else {
+            // Check if we're over any element
+            const elements = Object.keys(elementMeta) as ElementType[];
+            let overElement = false;
+            
+            for (const element of elements) {
+                if (elementMeta[element].side === 'front' && isPointInElement(element, x, y)) {
+                    overElement = true;
+                    break;
+                }
+            }
+            
+            canvas.style.cursor = overElement ? 'move' : 'default';
         }
     };
 
@@ -513,6 +663,24 @@ export default function IdTemplateLayout({
             ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
             ctx.strokeStyle = '#000';
             ctx.strokeRect(bounds.left, bounds.top, bounds.width, bounds.height);
+
+            // Add resize handles at each corner (visible when the element is selected)
+            if (draggedElement === 'emp_img') {
+                const handleSize = 10;
+
+                // Top-left handle
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+                ctx.fillRect(bounds.left - handleSize / 2, bounds.top - handleSize / 2, handleSize, handleSize);
+
+                // Top-right handle
+                ctx.fillRect(bounds.left + bounds.width - handleSize / 2, bounds.top - handleSize / 2, handleSize, handleSize);
+
+                // Bottom-left handle
+                ctx.fillRect(bounds.left - handleSize / 2, bounds.top + bounds.height - handleSize / 2, handleSize, handleSize);
+
+                // Bottom-right handle
+                ctx.fillRect(bounds.left + bounds.width - handleSize / 2, bounds.top + bounds.height - handleSize / 2, handleSize, handleSize);
+            }
         } else if (backTextElements.includes(element)) {
             // For text elements on the back side, draw left-aligned with vertical centering
             ctx.fillStyle = color;
@@ -529,7 +697,7 @@ export default function IdTemplateLayout({
             if (element === 'emp_add') {
                 sampleText = "123 Sample Street, City";
             } else if (element === 'emp_bday') {
-                sampleText = "January 1, 1990";
+                sampleText = "Month Day, Year";
             } else if (element === 'emp_sss') {
                 sampleText = "12-3456789-0";
             } else if (element === 'emp_phic') {
@@ -573,14 +741,14 @@ export default function IdTemplateLayout({
             
             if (element === 'emp_name') {
                 ctx.font = 'bold 30px "Calibri", "Roboto", sans-serif';
-                sampleText = "John Doe";
+                sampleText = "Employee Name";
                 ctx.textBaseline = "middle";
             } else if (element === 'emp_pos') {
                 ctx.font = 'italic 25px "Calibri", "Roboto", sans-serif';
-                sampleText = "Software Developer";
+                sampleText = "Position";
             } else if (element === 'emp_idno') {
                 ctx.font = 'bold 18px "Calibri", "Roboto", sans-serif';
-                sampleText = "EMP-12345";
+                sampleText = "IDNO";
             } else if (element === 'emp_sig') {
                 ctx.font = '18px "Calibri", "Roboto", sans-serif';
                 sampleText = "Signature";
@@ -736,275 +904,235 @@ export default function IdTemplateLayout({
             </div>
 
             {/* Main content */}
-            <div className="px-4 sm:px-6 lg:px-8 py-5 grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Front controls */}
-                <div className="lg:col-span-3">
+            <div className="px-2 sm:px-4 lg:px-6 py-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+                {/* Front controls - more compact */}
+                <div className="lg:col-span-2">
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                        <div className="bg-gray-100 dark:bg-gray-900 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Front Elements</h3>
-                            <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">
-                                Position (X,Y)
-                            </span>
+                        <div className="bg-gray-100 dark:bg-gray-900 px-3 py-2 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                            <h3 className="text-xs font-semibold text-gray-900 dark:text-white">Front Elements</h3>
                         </div>
-                        <div className="p-4 max-h-[700px] overflow-y-auto space-y-4">
+                        <div className="p-2 max-h-[750px] overflow-y-auto space-y-2">
                             {/* Instructions for drag */}
-                            <div className="p-2 mb-2 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                            <div className="p-2 mb-1 bg-blue-50 dark:bg-blue-900/20 rounded-md">
                                 <p className="text-xs text-blue-700 dark:text-blue-400 flex items-center">
                                     <Move className="h-3 w-3 mr-1" />
-                                    Click and drag elements directly on the template to position them
+                                    Drag elements directly on canvas
                                 </p>
                             </div>
 
                             {/* Photo */}
-                            <div className="pb-4 border-b border-gray-100 dark:border-gray-700">
-                                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Photo Position</div>
-                                <div className="grid grid-cols-2 gap-2 mb-2">
+                            <div className="pb-2 border-b border-gray-100 dark:border-gray-700">
+                                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Photo</div>
+                                <div className="grid grid-cols-2 gap-1 mb-1">
                                     <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            X
-                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">X</span>
                                         <input
                                             type="number"
-                                            id="photo_x"
                                             value={coordinates.emp_img_x}
                                             onChange={(e) => updateElementPosition('emp_img', 'x', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
+                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
                                         />
                                     </div>
                                     <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            Y
-                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">Y</span>
                                         <input
                                             type="number"
-                                            id="photo_y"
                                             value={coordinates.emp_img_y}
                                             onChange={(e) => updateElementPosition('emp_img', 'y', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
+                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
                                         />
                                     </div>
                                 </div>
-                                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Photo Size</div>
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-2 gap-1">
                                     <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            W
-                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">W</span>
                                         <input
                                             type="number"
-                                            id="photo_width"
                                             value={coordinates.emp_img_width}
                                             onChange={(e) => updateElementPosition('emp_img', 'width', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
+                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
                                         />
                                     </div>
                                     <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            H
-                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">H</span>
                                         <input
                                             type="number"
-                                            id="photo_height"
                                             value={coordinates.emp_img_height}
                                             onChange={(e) => updateElementPosition('emp_img', 'height', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
+                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
                                         />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Name */}
-                            <div className="pb-4 border-b border-gray-100 dark:border-gray-700">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Name Position</span>
+                            <div className="pb-2 border-b border-gray-100 dark:border-gray-700">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Name</span>
                                     <button
-                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
                                         onClick={() => centerElement('emp_name')}
                                     >
-                                        <AlignCenter className="h-3 w-3 mr-1" /> Center
+                                        <AlignCenter className="h-2 w-2 mr-0.5" /> Center
                                     </button>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-2 gap-1">
                                     <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            X
-                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">X</span>
                                         <input
                                             type="number"
-                                            id="name_x"
                                             value={coordinates.emp_name_x}
                                             onChange={(e) => updateElementPosition('emp_name', 'x', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
+                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
                                         />
                                     </div>
                                     <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            Y
-                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">Y</span>
                                         <input
                                             type="number"
-                                            id="name_y"
                                             value={coordinates.emp_name_y}
                                             onChange={(e) => updateElementPosition('emp_name', 'y', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
+                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
                                         />
                                     </div>
                                 </div>
                             </div>
                             
                             {/* Position */}
-                            <div className="pb-4 border-b border-gray-100 dark:border-gray-700">
-                                <div className="flex justify-between items-center mb-2">
+                            <div className="pb-2 border-b border-gray-100 dark:border-gray-700">
+                                <div className="flex justify-between items-center mb-1">
                                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Position</span>
                                     <button
-                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
                                         onClick={() => centerElement('emp_pos')}
                                     >
-                                        <AlignCenter className="h-3 w-3 mr-1" /> Center
+                                        <AlignCenter className="h-2 w-2 mr-0.5" /> Center
                                     </button>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-2 gap-1">
                                     <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            X
-                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">X</span>
                                         <input
                                             type="number"
-                                            id="position_x"
                                             value={coordinates.emp_pos_x}
                                             onChange={(e) => updateElementPosition('emp_pos', 'x', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
+                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
                                         />
                                     </div>
                                     <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            Y
-                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">Y</span>
                                         <input
                                             type="number"
-                                            id="position_y"
                                             value={coordinates.emp_pos_y}
                                             onChange={(e) => updateElementPosition('emp_pos', 'y', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
+                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
                                         />
                                     </div>
                                 </div>
                             </div>
 
                             {/* ID Number */}
-                            <div className='pb-4 border-b border-gray-100 dark:border-gray-700'>
-                                <div className="flex justify-between items-center mb-2">
+                            <div className='pb-2 border-b border-gray-100 dark:border-gray-700'>
+                                <div className="flex justify-between items-center mb-1">
                                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400">ID Number</span>
                                     <button
-                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
                                         onClick={() => centerElement('emp_idno')}
                                     >
-                                        <AlignCenter className="h-3 w-3 mr-1" /> Center
+                                        <AlignCenter className="h-2 w-2 mr-0.5" /> Center
                                     </button>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-2 gap-1">
                                     <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            X
-                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">X</span>
                                         <input
                                             type="number"
-                                            id="id_number_x"
                                             value={coordinates.emp_idno_x}
                                             onChange={(e) => updateElementPosition('emp_idno', 'x', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
+                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
                                         />
                                     </div>
                                     <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            Y
-                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">Y</span>
                                         <input
                                             type="number"
-                                            id="id_number_y"
                                             value={coordinates.emp_idno_y}
                                             onChange={(e) => updateElementPosition('emp_idno', 'y', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
+                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
                                         />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Signature */}
-                            <div className="pb-4 border-b border-gray-100 dark:border-gray-700">
-                                <div className="flex justify-between items-center mb-2">
+                            <div className="pb-2 border-b border-gray-100 dark:border-gray-700">
+                                <div className="flex justify-between items-center mb-1">
                                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Signature</span>
                                     <button
-                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
                                         onClick={() => centerElement('emp_sig')}
                                     >
-                                        <AlignCenter className="h-3 w-3 mr-1" /> Center
+                                        <AlignCenter className="h-2 w-2 mr-0.5" /> Center
                                     </button>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-2 gap-1">
                                     <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            X
-                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">X</span>
                                         <input
                                             type="number"
-                                            id="signature_x"
                                             value={coordinates.emp_sig_x}
                                             onChange={(e) => updateElementPosition('emp_sig', 'x', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
+                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
                                         />
                                     </div>
                                     <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            Y
-                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">Y</span>
                                         <input
                                             type="number"
-                                            id="signature_y"
                                             value={coordinates.emp_sig_y}
                                             onChange={(e) => updateElementPosition('emp_sig', 'y', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
+                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
                                         />
                                     </div>
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 </div>
 
-                {/* Canvas Area */}
-                <div className="lg:col-span-6">
+                {/* Canvas Area - Expanded */}
+                <div className="lg:col-span-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Front Canvas */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 text-center">
+                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-2 text-center">
                             <div className="flex items-center justify-center">
                                 <canvas
                                     ref={frontCanvasRef}
                                     width="651"
                                     height="1005"
-                                    className="max-w-full h-auto border border-gray-200 dark:border-gray-700 cursor-move"
+                                    className="w-full h-auto border border-gray-200 dark:border-gray-700 cursor-move"
                                     onMouseDown={(e) => handleCanvasMouseDown(e, 'front')}
                                     onMouseMove={handleCanvasMouseMove}
                                     onMouseUp={handleCanvasMouseUp}
                                     onMouseLeave={handleCanvasMouseLeave}
+                                    onMouseOver={handleCanvasMouseOver}
                                 ></canvas>
                             </div>
                             {imageLoadErrors.front && (
-                                <p className="text-yellow-600 dark:text-yellow-500 text-xs mt-2">
-                                    Failed to load front template image. Using placeholder.
+                                <p className="text-yellow-600 dark:text-yellow-500 text-xs mt-1">
+                                    Failed to load front template image.
                                 </p>
                             )}
                         </div>
 
                         {/* Back Canvas */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 text-center">
+                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-2 text-center">
                             <div className="flex items-center justify-center">
                                 <canvas
                                     ref={backCanvasRef}
                                     width="651"
                                     height="1005"
-                                    className="max-w-full h-auto border border-gray-200 dark:border-gray-700 cursor-move"
+                                    className="w-full h-auto border border-gray-200 dark:border-gray-700 cursor-move"
                                     onMouseDown={(e) => handleCanvasMouseDown(e, 'back')}
                                     onMouseMove={handleCanvasMouseMove}
                                     onMouseUp={handleCanvasMouseUp}
@@ -1012,437 +1140,338 @@ export default function IdTemplateLayout({
                                 ></canvas>
                             </div>
                             {imageLoadErrors.back && (
-                                <p className="text-yellow-600 dark:text-yellow-500 text-xs mt-2">
-                                    Failed to load back template image. Using placeholder.
+                                <p className="text-yellow-600 dark:text-yellow-500 text-xs mt-1">
+                                    Failed to load back template image.
                                 </p>
                             )}
                         </div>
                     </div>
                 </div>
 
-                {/* Back controls */}
-                <div className="lg:col-span-3">
+                {/* Back controls - More compact */}
+                <div className="lg:col-span-2">
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                        <div className="bg-gray-100 dark:bg-gray-900 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Back Elements</h3>
-                            <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">
-                                Position (X,Y)
-                            </span>
+                        <div className="bg-gray-100 dark:bg-gray-900 px-3 py-2 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                            <h3 className="text-xs font-semibold text-gray-900 dark:text-white">Back Elements</h3>
                         </div>
-                        <div className="p-4 max-h-[700px] overflow-y-auto space-y-4">
+                        <div className="p-2 max-h-[750px] overflow-y-auto space-y-2">
                             {/* QR Code */}
-                            <div className="pb-4 border-b border-gray-100 dark:border-gray-700">
-                                <div className="flex justify-between items-center mb-2">
+                            <div className="pb-2 border-b border-gray-100 dark:border-gray-700">
+                                <div className="flex justify-between items-center mb-1">
                                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400">QR Code</span>
                                     <button
-                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                                        onClick={() => centerElement('qr_code')}
+                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                                        onClick={() => centerElement('emp_qrcode')}
                                     >
-                                        <AlignCenter className="h-3 w-3 mr-1" /> Center
+                                        <AlignCenter className="h-2 w-2 mr-0.5" /> Center
                                     </button>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2 mb-2">
+                                <div className="grid grid-cols-2 gap-1 mb-1">
                                     <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            X
-                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">X</span>
                                         <input
                                             type="number"
-                                            id="qr_code_x"
                                             value={coordinates.emp_qrcode_x}
-                                            onChange={(e) => updateElementPosition('qr_code', 'x', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
+                                            onChange={(e) => updateElementPosition('emp_qrcode', 'x', e.target.value)}
+                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
                                         />
                                     </div>
                                     <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            Y
-                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">Y</span>
                                         <input
                                             type="number"
-                                            id="qr_code_y"
                                             value={coordinates.emp_qrcode_y}
-                                            onChange={(e) => updateElementPosition('qr_code', 'y', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
+                                            onChange={(e) => updateElementPosition('emp_qrcode', 'y', e.target.value)}
+                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
                                         />
                                     </div>
                                 </div>
-                                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">QR Code Size</div>
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-2 gap-1">
                                     <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            W
-                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">W</span>
                                         <input
                                             type="number"
-                                            id="emp_qrcode_width"
                                             value={coordinates.emp_qrcode_width}
-                                            onChange={(e) => updateElementPosition('qr_code', 'width', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
+                                            onChange={(e) => updateElementPosition('emp_qrcode', 'width', e.target.value)}
+                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
                                         />
                                     </div>
                                     <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            H
-                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">H</span>
                                         <input
                                             type="number"
-                                            id="emp_qrcode_height"
                                             value={coordinates.emp_qrcode_height}
-                                            onChange={(e) => updateElementPosition('qr_code', 'height', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
+                                            onChange={(e) => updateElementPosition('emp_qrcode', 'height', e.target.value)}
+                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
                                         />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Address */}
-                            <div className="pb-4 border-b border-gray-100 dark:border-gray-700">
-                                <div className="flex justify-between items-center mb-2">
+                            <div className="pb-2 border-b border-gray-100 dark:border-gray-700">
+                                <div className="flex justify-between items-center mb-1">
                                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Address</span>
                                     <button
-                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
                                         onClick={() => centerElement('emp_add')}
                                     >
-                                        <AlignCenter className="h-3 w-3 mr-1" /> Center
+                                        <AlignCenter className="h-2 w-2 mr-0.5" /> Center
                                     </button>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-2 gap-1">
                                     <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            X
-                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">X</span>
                                         <input
                                             type="number"
-                                            id="address_x"
                                             value={coordinates.emp_add_x}
                                             onChange={(e) => updateElementPosition('emp_add', 'x', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
+                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
                                         />
                                     </div>
                                     <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            Y
-                                        </span>
+                                        <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">Y</span>
                                         <input
                                             type="number"
-                                            id="address_y"
                                             value={coordinates.emp_add_y}
                                             onChange={(e) => updateElementPosition('emp_add', 'y', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
+                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
                                         />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Birthdate */}
-                            <div className="pb-4 border-b border-gray-100 dark:border-gray-700">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Birthdate</span>
-                                    <button
-                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                                        onClick={() => centerElement('emp_bday')}
-                                    >
-                                        <AlignCenter className="h-3 w-3 mr-1" /> Center
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            X
-                                        </span>
-                                        <input
-                                            type="number"
-                                            id="birthdate_x"
-                                            value={coordinates.emp_bday_x}
-                                            onChange={(e) => updateElementPosition('emp_bday', 'x', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
-                                        />
+                            {/* Birthdate, SSS, TIN in a more compact accordion-like layout */}
+                            <div className="space-y-2">
+                                {/* Birthdate */}
+                                <div className="pb-2 border-b border-gray-100 dark:border-gray-700">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Birthdate</span>
+                                        <div className="flex space-x-1">
+                                            <button
+                                                className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                                                onClick={() => centerElement('emp_bday')}
+                                            >
+                                                <AlignCenter className="h-2 w-2 mr-0.5" /> Center
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            Y
-                                        </span>
-                                        <input
-                                            type="number"
-                                            id="birthdate_y"
-                                            value={coordinates.emp_bday_y}
-                                            onChange={(e) => updateElementPosition('emp_bday', 'y', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
-                                        />
+                                    <div className="grid grid-cols-2 gap-1">
+                                        <div className="flex items-center">
+                                            <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">X</span>
+                                            <input
+                                                type="number"
+                                                value={coordinates.emp_bday_x}
+                                                onChange={(e) => updateElementPosition('emp_bday', 'x', e.target.value)}
+                                                className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
+                                            />
+                                        </div>
+                                        <div className="flex items-center">
+                                            <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">Y</span>
+                                            <input
+                                                type="number"
+                                                value={coordinates.emp_bday_y}
+                                                onChange={(e) => updateElementPosition('emp_bday', 'y', e.target.value)}
+                                                className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* SSS */}
-                            <div className="pb-4 border-b border-gray-100 dark:border-gray-700">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">SSS</span>
-                                    <button
-                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                                        onClick={() => centerElement('emp_sss')}
-                                    >
-                                        <AlignCenter className="h-3 w-3 mr-1" /> Center
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            X
-                                        </span>
-                                        <input
-                                            type="number"
-                                            id="sss_x"
-                                            value={coordinates.emp_sss_x}
-                                            onChange={(e) => updateElementPosition('emp_sss', 'x', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
-                                        />
+                                {/* Government IDs in a compact layout */}
+                                <div className="grid grid-cols-1 gap-2">
+                                    {/* SSS */}
+                                    <div className="pb-1">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">SSS</span>
+                                            <div className="flex space-x-1">
+                                                <div className="flex items-center">
+                                                    <span className="text-xs text-gray-500">X:</span>
+                                                    <input
+                                                        type="number"
+                                                        value={coordinates.emp_sss_x}
+                                                        onChange={(e) => updateElementPosition('emp_sss', 'x', e.target.value)}
+                                                        className="ml-1 w-12 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <span className="text-xs text-gray-500">Y:</span>
+                                                    <input
+                                                        type="number"
+                                                        value={coordinates.emp_sss_y}
+                                                        onChange={(e) => updateElementPosition('emp_sss', 'y', e.target.value)}
+                                                        className="ml-1 w-12 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            Y
-                                        </span>
-                                        <input
-                                            type="number"
-                                            id="sss_y"
-                                            value={coordinates.emp_sss_y}
-                                            onChange={(e) => updateElementPosition('emp_sss', 'y', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
 
-                            {/* TIN */}
-                            <div className="pb-4 border-b border-gray-100 dark:border-gray-700">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">TIN</span>
-                                    <button
-                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                                        onClick={() => centerElement('emp_tin')}
-                                    >
-                                        <AlignCenter className="h-3 w-3 mr-1" /> Center
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            X
-                                        </span>
-                                        <input
-                                            type="number"
-                                            id="tin_x"
-                                            value={coordinates.emp_tin_x}
-                                            onChange={(e) => updateElementPosition('emp_tin', 'x', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
-                                        />
+                                    {/* TIN */}
+                                    <div className="pb-1">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">TIN</span>
+                                            <div className="flex space-x-1">
+                                                <div className="flex items-center">
+                                                    <span className="text-xs text-gray-500">X:</span>
+                                                    <input
+                                                        type="number"
+                                                        value={coordinates.emp_tin_x}
+                                                        onChange={(e) => updateElementPosition('emp_tin', 'x', e.target.value)}
+                                                        className="ml-1 w-12 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <span className="text-xs text-gray-500">Y:</span>
+                                                    <input
+                                                        type="number"
+                                                        value={coordinates.emp_tin_y}
+                                                        onChange={(e) => updateElementPosition('emp_tin', 'y', e.target.value)}
+                                                        className="ml-1 w-12 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            Y
-                                        </span>
-                                        <input
-                                            type="number"
-                                            id="tin_y"
-                                            value={coordinates.emp_tin_y}
-                                            onChange={(e) => updateElementPosition('emp_tin', 'y', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
 
-                            {/* PHIC */}
-                            <div className="pb-4 border-b border-gray-100 dark:border-gray-700">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">PHIC</span>
-                                    <button
-                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                                        onClick={() => centerElement('emp_phic')}
-                                    >
-                                        <AlignCenter className="h-3 w-3 mr-1" /> Center
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            X
-                                        </span>
-                                        <input
-                                            type="number"
-                                            id="phic_x"
-                                            value={coordinates.emp_phic_x}
-                                            onChange={(e) => updateElementPosition('emp_phic', 'x', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
-                                        />
+                                    {/* PHIC */}
+                                    <div className="pb-1">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">PHIC</span>
+                                            <div className="flex space-x-1">
+                                                <div className="flex items-center">
+                                                    <span className="text-xs text-gray-500">X:</span>
+                                                    <input
+                                                        type="number"
+                                                        value={coordinates.emp_phic_x}
+                                                        onChange={(e) => updateElementPosition('emp_phic', 'x', e.target.value)}
+                                                        className="ml-1 w-12 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <span className="text-xs text-gray-500">Y:</span>
+                                                    <input
+                                                        type="number"
+                                                        value={coordinates.emp_phic_y}
+                                                        onChange={(e) => updateElementPosition('emp_phic', 'y', e.target.value)}
+                                                        className="ml-1 w-12 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            Y
-                                        </span>
-                                        <input
-                                            type="number"
-                                            id="phic_y"
-                                            value={coordinates.emp_phic_y}
-                                            onChange={(e) => updateElementPosition('emp_phic', 'y', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
 
-                            {/* HDMF */}
-                            <div className="pb-4 border-b border-gray-100 dark:border-gray-700">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">HDMF</span>
-                                    <button
-                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                                        onClick={() => centerElement('emp_hdmf')}
-                                    >
-                                        <AlignCenter className="h-3 w-3 mr-1" /> Center
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            X
-                                        </span>
-                                        <input
-                                            type="number"
-                                            id="hdmf_x"
-                                            value={coordinates.emp_hdmf_x}
-                                            onChange={(e) => updateElementPosition('emp_hdmf', 'x', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
-                                        />
-                                    </div>
-                                    <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            Y
-                                        </span>
-                                        <input
-                                            type="number"
-                                            id="hdmf_y"
-                                            value={coordinates.emp_hdmf_y}
-                                            onChange={(e) => updateElementPosition('emp_hdmf', 'y', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
-                                        />
+                                    {/* HDMF */}
+                                    <div className="pb-1 border-b border-gray-100 dark:border-gray-700">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">HDMF</span>
+                                            <div className="flex space-x-1">
+                                                <div className="flex items-center">
+                                                    <span className="text-xs text-gray-500">X:</span>
+                                                    <input
+                                                        type="number"
+                                                        value={coordinates.emp_hdmf_x}
+                                                        onChange={(e) => updateElementPosition('emp_hdmf', 'x', e.target.value)}
+                                                        className="ml-1 w-12 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <span className="text-xs text-gray-500">Y:</span>
+                                                    <input
+                                                        type="number"
+                                                        value={coordinates.emp_hdmf_y}
+                                                        onChange={(e) => updateElementPosition('emp_hdmf', 'y', e.target.value)}
+                                                        className="ml-1 w-12 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Emergency Contact */}
-                            <div className="pb-4 border-b border-gray-100 dark:border-gray-700">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Emergency Contact</span>
-                                    <button
-                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                                        onClick={() => centerElement('emp_emergency_name')}
-                                    >
-                                        <AlignCenter className="h-3 w-3 mr-1" /> Center
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            X
-                                        </span>
-                                        <input
-                                            type="number"
-                                            id="emergency_contact_x"
-                                            value={coordinates.emp_emergency_name_x}
-                                            onChange={(e) => updateElementPosition('emp_emergency_name', 'x', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
-                                        />
+                                {/* Emergency Contacts */}
+                                <div className="border-t border-gray-100 dark:border-gray-700 pt-2">
+                                    <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Emergency Contacts</div>
+                                    
+                                    {/* Emergency Name */}
+                                    <div className="pb-1">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs text-gray-500">Name</span>
+                                            <div className="flex space-x-1">
+                                                <div className="flex items-center">
+                                                    <span className="text-xs text-gray-500">X:</span>
+                                                    <input
+                                                        type="number"
+                                                        value={coordinates.emp_emergency_name_x}
+                                                        onChange={(e) => updateElementPosition('emp_emergency_name', 'x', e.target.value)}
+                                                        className="ml-1 w-12 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <span className="text-xs text-gray-500">Y:</span>
+                                                    <input
+                                                        type="number"
+                                                        value={coordinates.emp_emergency_name_y}
+                                                        onChange={(e) => updateElementPosition('emp_emergency_name', 'y', e.target.value)}
+                                                        className="ml-1 w-12 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            Y
-                                        </span>
-                                        <input
-                                            type="number"
-                                            id="emergency_contact_y"
-                                            value={coordinates.emp_emergency_name_y}
-                                            onChange={(e) => updateElementPosition('emp_emergency_name', 'y', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
 
-                            {/* Emergency Number */}
-                            <div className="pb-4 border-b border-gray-100 dark:border-gray-700">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Emergency Number</span>
-                                    <button
-                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                                        onClick={() => centerElement('emp_emergency_num')}
-                                    >
-                                        <AlignCenter className="h-3 w-3 mr-1" /> Center
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            X
-                                        </span>
-                                        <input
-                                            type="number"
-                                            id="emergency_number_x"
-                                            value={coordinates.emp_emergency_num_x}
-                                            onChange={(e) => updateElementPosition('emp_emergency_num', 'x', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
-                                        />
+                                    {/* Emergency Number */}
+                                    <div className="pb-1">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs text-gray-500">Phone</span>
+                                            <div className="flex space-x-1">
+                                                <div className="flex items-center">
+                                                    <span className="text-xs text-gray-500">X:</span>
+                                                    <input
+                                                        type="number"
+                                                        value={coordinates.emp_emergency_num_x}
+                                                        onChange={(e) => updateElementPosition('emp_emergency_num', 'x', e.target.value)}
+                                                        className="ml-1 w-12 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <span className="text-xs text-gray-500">Y:</span>
+                                                    <input
+                                                        type="number"
+                                                        value={coordinates.emp_emergency_num_y}
+                                                        onChange={(e) => updateElementPosition('emp_emergency_num', 'y', e.target.value)}
+                                                        className="ml-1 w-12 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            Y
-                                        </span>
-                                        <input
-                                            type="number"
-                                            id="emergency_number_y"
-                                            value={coordinates.emp_emergency_num_y}
-                                            onChange={(e) => updateElementPosition('emp_emergency_num', 'y', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
 
-                            {/* Emergency Address */}
-                            <div className="pb-4 border-b border-gray-100 dark:border-gray-700">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Emergency Address</span>
-                                    <button
-                                        className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                                        onClick={() => centerElement('emp_emergency_add')}
-                                    >
-                                        <AlignCenter className="h-3 w-3 mr-1" /> Center
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            X
-                                        </span>
-                                        <input
-                                            type="number"
-                                            id="emergency_address_x"
-                                            value={coordinates.emp_emergency_add_x}
-                                            onChange={(e) => updateElementPosition('emp_emergency_add', 'x', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
-                                        />
-                                    </div>
-                                    <div className="flex items-center">
-                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
-                                            Y
-                                        </span>
-                                        <input
-                                            type="number"
-                                            id="emergency_address_y"
-                                            value={coordinates.emp_emergency_add_y}
-                                            onChange={(e) => updateElementPosition('emp_emergency_add', 'y', e.target.value)}
-                                            className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm text-center py-1"
-                                        />
+                                    {/* Emergency Address */}
+                                    <div className="pb-1">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs text-gray-500">Address</span>
+                                            <div className="flex space-x-1">
+                                                <div className="flex items-center">
+                                                    <span className="text-xs text-gray-500">X:</span>
+                                                    <input
+                                                        type="number"
+                                                        value={coordinates.emp_emergency_add_x}
+                                                        onChange={(e) => updateElementPosition('emp_emergency_add', 'x', e.target.value)}
+                                                        className="ml-1 w-12 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <span className="text-xs text-gray-500">Y:</span>
+                                                    <input
+                                                        type="number"
+                                                        value={coordinates.emp_emergency_add_y}
+                                                        onChange={(e) => updateElementPosition('emp_emergency_add', 'y', e.target.value)}
+                                                        className="ml-1 w-12 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
