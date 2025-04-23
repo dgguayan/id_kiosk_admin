@@ -333,10 +333,107 @@ export default function IdTemplateLayout({
         };
     };
 
-    // Check if a point is inside an element's bounds
+    // Update the isPointInElement function to use the actual visual bounds
     const isPointInElement = (element: ElementType, x: number, y: number) => {
         const bounds = getElementBounds(element);
-        return x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom;
+        
+        // For standard image elements, use the full rectangle
+        if (element === 'emp_img' || element === 'emp_qrcode') {
+            return x >= bounds.left && x <= bounds.right && 
+                   y >= bounds.top && y <= bounds.bottom;
+        }
+        
+        // For text elements, calculate the actual text width + padding
+        // First set the appropriate font to get accurate measurements
+        const ctx = frontCanvasRef.current?.getContext('2d');
+        if (!ctx) return false;
+        
+        // Set font based on element type
+        const backTextElements = [
+            'emp_add', 'emp_bday', 'emp_sss', 'emp_phic', 'emp_hdmf', 'emp_tin',
+            'emp_emergency_name', 'emp_emergency_num', 'emp_emergency_add'
+        ];
+        
+        if (element === 'emp_name') {
+            ctx.font = 'bold 30px "Calibri", "Roboto", sans-serif';
+        } else if (element === 'emp_pos') {
+            ctx.font = 'italic 25px "Calibri", "Roboto", sans-serif';
+        } else if (element === 'emp_idno') {
+            ctx.font = 'bold 18px "Calibri", "Roboto", sans-serif';
+        } else if (backTextElements.includes(element)) {
+            ctx.font = '25px "Calibri", "Roboto", sans-serif';
+        } else {
+            ctx.font = '18px "Calibri", "Roboto", sans-serif';
+        }
+        
+        // Determine sample text based on element type
+        let sampleText = elementMeta[element].label;
+        if (element === 'emp_name') {
+            sampleText = "Employee Name";
+        } else if (element === 'emp_pos') {
+            sampleText = "Position";
+        } else if (element === 'emp_idno') {
+            sampleText = "IDNO";
+        } else if (element === 'emp_sig') {
+            sampleText = "Signature";
+        } else if (element === 'emp_add') {
+            sampleText = "123 Sample Street, City";
+        } else if (element === 'emp_bday') {
+            sampleText = "Month Day, Year";
+        } else if (element === 'emp_sss') {
+            sampleText = "12-3456789-0";
+        } else if (element === 'emp_phic') {
+            sampleText = "98-7654321-0";
+        } else if (element === 'emp_hdmf') {
+            sampleText = "1234-5678-9012";
+        } else if (element === 'emp_tin') {
+            sampleText = "123-456-789-000";
+        } else if (element === 'emp_emergency_name') {
+            sampleText = "Emergency Contact";
+        } else if (element === 'emp_emergency_num') {
+            sampleText = "(123) 456-7890";
+        } else if (element === 'emp_emergency_add') {
+            sampleText = "456 Emergency Address, City";
+        }
+        
+        // Calculate text dimensions with padding
+        const textMetrics = ctx.measureText(sampleText);
+        const textWidth = textMetrics.width;
+        const horizontalPadding = 20;
+        const adjustedWidth = textWidth + horizontalPadding;
+        
+        // Calculate height with padding
+        let adjustedHeight = bounds.height;
+        if (element === 'emp_add' || element === 'emp_emergency_add') {
+            adjustedHeight = 45; // Taller for multiline text
+        }
+        
+        // Calculate actual bounds based on element type
+        let actualLeft, actualTop, actualRight, actualBottom;
+        
+        if (backTextElements.includes(element)) {
+            // For back elements - use left-aligned bounds
+            actualLeft = bounds.left;
+            actualTop = bounds.top;
+            actualRight = bounds.left + adjustedWidth;
+            actualBottom = bounds.top + adjustedHeight;
+        } else if (element === 'emp_sig') {
+            // For signature, use fixed dimensions
+            actualLeft = bounds.left - bounds.width / 2;
+            actualTop = bounds.top - bounds.height / 2;
+            actualRight = bounds.left + bounds.width / 2;
+            actualBottom = bounds.top + bounds.height / 2;
+        } else {
+            // For centered elements (front side text elements)
+            actualLeft = bounds.left + (bounds.width - adjustedWidth) / 2;
+            actualTop = bounds.top;
+            actualRight = actualLeft + adjustedWidth;
+            actualBottom = actualTop + adjustedHeight;
+        }
+        
+        // Check if point is within the adjusted bounds
+        return x >= actualLeft && x <= actualRight && 
+               y >= actualTop && y <= actualBottom;
     };
 
     // Handle mouse down on canvas to start dragging
@@ -389,17 +486,28 @@ export default function IdTemplateLayout({
                 setDraggedElement(element);
                 setIsDragging(true);
 
-                // Calculate offset for smooth dragging
+                // Different drag offset calculation based on element type
                 if (element === 'emp_img' || element === 'emp_qrcode') {
-                    // For boxes, calculate offset from top-left
+                    // For images/QR code, calculate offset from cursor to top-left corner
                     const elementX = coordinates[`${element}_x` as keyof TemplateCoordinates] as number;
                     const elementY = coordinates[`${element}_y` as keyof TemplateCoordinates] as number;
-                    setDragOffset({ x: x - elementX, y: y - elementY });
+                    
+                    setDragOffset({
+                        x: x - elementX,
+                        y: y - elementY
+                    });
                 } else {
-                    // For centered elements, use center offset
-                    setDragOffset({ x: 0, y: 0 });
+                    // For text elements, keep the existing center-based approach
+                    const bounds = getElementBounds(element);
+                    const centerX = bounds.left + bounds.width / 2;
+                    const centerY = bounds.top + bounds.height / 2;
+                    
+                    setDragOffset({ 
+                        x: x - centerX, 
+                        y: y - centerY 
+                    });
                 }
-
+                
                 break;
             }
         }
@@ -478,34 +586,45 @@ export default function IdTemplateLayout({
         
         // Existing dragging code...
         if (isDragging && draggedElement) {
-            const backTextElements = [
-                'emp_add', 'emp_bday', 'emp_sss', 'emp_phic', 'emp_hdmf', 'emp_tin',
-                'emp_emergency_name', 'emp_emergency_num', 'emp_emergency_add'
-            ];
-            
-            let newX, newY;
-            
-            // Handle different dragging behaviors based on element type
             if (draggedElement === 'emp_img' || draggedElement === 'emp_qrcode') {
-                // For boxes, calculate position by subtracting the offset from the mouse position
-                newX = Math.max(0, Math.min(x - dragOffset.x, canvas.width - 50));
-                newY = Math.max(0, Math.min(y - dragOffset.y, canvas.height - 50));
-            } else if (backTextElements.includes(draggedElement)) {
-                // For back text elements - direct position
-                newX = Math.max(0, Math.min(x, canvas.width - 50));
-                newY = Math.max(0, Math.min(y, canvas.height - 50));
+                // For image and QR code, directly apply the offset from the drag start point
+                const newX = Math.max(0, Math.min(x - dragOffset.x, canvas.width - 50));
+                const newY = Math.max(0, Math.min(y - dragOffset.y, canvas.height - 50));
+                
+                // Update coordinates using direct positioning (top-left based)
+                setCoordinates(prev => ({
+                    ...prev,
+                    [`${draggedElement}_x`]: Math.round(newX),
+                    [`${draggedElement}_y`]: Math.round(newY)
+                }));
             } else {
-                // For front centered elements
-                newX = Math.max(0, Math.min(x, canvas.width));
-                newY = Math.max(0, Math.min(y, canvas.height));
+                // For text elements, keep using the center-based approach
+                const newX = x - dragOffset.x;
+                const newY = y - dragOffset.y;
+                
+                // But convert to the appropriate coordinate system before saving
+                let finalX = newX;
+                let finalY = newY;
+                
+                // For back text elements, convert from center to left alignment
+                const backTextElements = [
+                    'emp_add', 'emp_bday', 'emp_sss', 'emp_phic', 'emp_hdmf', 'emp_tin',
+                    'emp_emergency_name', 'emp_emergency_num', 'emp_emergency_add'
+                ];
+                
+                if (backTextElements.includes(draggedElement)) {
+                    // Since we dragged from the center but need to store as left-aligned
+                    const bounds = getElementBounds(draggedElement);
+                    finalX = newX - bounds.width / 2;
+                }
+                
+                // Update coordinates with the appropriate reference point
+                setCoordinates(prev => ({
+                    ...prev,
+                    [`${draggedElement}_x`]: Math.round(finalX),
+                    [`${draggedElement}_y`]: Math.round(finalY)
+                }));
             }
-
-            // Update the element coordinates
-            setCoordinates(prev => ({
-                ...prev,
-                [`${draggedElement}_x`]: Math.round(newX),
-                [`${draggedElement}_y`]: Math.round(newY)
-            }));
         }
     };
 
@@ -644,139 +763,177 @@ export default function IdTemplateLayout({
             'emp_emergency_name', 'emp_emergency_num', 'emp_emergency_add'
         ];
 
+        // Set font first so we can measure text
+        if (element === 'emp_name') {
+            ctx.font = 'bold 30px "Calibri", "Roboto", sans-serif';
+        } else if (element === 'emp_pos') {
+            ctx.font = 'italic 25px "Calibri", "Roboto", sans-serif';
+        } else if (element === 'emp_idno') {
+            ctx.font = 'bold 18px "Calibri", "Roboto", sans-serif';
+        } else if (backTextElements.includes(element)) {
+            ctx.font = '25px "Calibri", "Roboto", sans-serif';
+        } else {
+            ctx.font = '18px "Calibri", "Roboto", sans-serif';
+        }
+
+        // Determine sample text based on element type
+        let sampleText = elementMeta[element].label;
+        if (element === 'emp_name') {
+            sampleText = "Employee Name";
+        } else if (element === 'emp_pos') {
+            sampleText = "Position";
+        } else if (element === 'emp_idno') {
+            sampleText = "IDNO";
+        } else if (element === 'emp_sig') {
+            sampleText = "Signature";
+        } else if (element === 'emp_add') {
+            sampleText = "123 Sample Street, City";
+        } else if (element === 'emp_bday') {
+            sampleText = "Month Day, Year";
+        } else if (element === 'emp_sss') {
+            sampleText = "12-3456789-0";
+        } else if (element === 'emp_phic') {
+            sampleText = "98-7654321-0";
+        } else if (element === 'emp_hdmf') {
+            sampleText = "1234-5678-9012";
+        } else if (element === 'emp_tin') {
+            sampleText = "123-456-789-000";
+        } else if (element === 'emp_emergency_name') {
+            sampleText = "Emergency Contact";
+        } else if (element === 'emp_emergency_num') {
+            sampleText = "(123) 456-7890";
+        } else if (element === 'emp_emergency_add') {
+            sampleText = "456 Emergency Address, City";
+        }
+
         // For elements that are centered in IdCardPreview, make sure they're centered here too
         if (element === 'emp_name' || element === 'emp_pos' || element === 'emp_idno') {
-            // Draw centered text using the same approach as IdCardPreview
             ctx.textAlign = "center";
         } else if (backTextElements.includes(element)) {
-            // Draw left-aligned text for back elements
             ctx.textAlign = "center";
         }
         
-        // Make sure the text baseline is consistent
         ctx.textBaseline = "middle";
 
-        // Use different drawing methods for different element types
+        // Handle different element types
         if (element === 'emp_img' || element === 'emp_qrcode') {
-            // For the photo and QR code, draw a rectangle at the exact position (top-left)
+            // For images and QR codes, keep the existing fixed size rectangle
             ctx.fillStyle = color;
             ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
             ctx.strokeStyle = '#000';
             ctx.strokeRect(bounds.left, bounds.top, bounds.width, bounds.height);
 
-            // Add resize handles at each corner (visible when the element is selected)
+            // Add resize handles for emp_img
             if (draggedElement === 'emp_img') {
                 const handleSize = 10;
-
-                // Top-left handle
                 ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
                 ctx.fillRect(bounds.left - handleSize / 2, bounds.top - handleSize / 2, handleSize, handleSize);
-
-                // Top-right handle
                 ctx.fillRect(bounds.left + bounds.width - handleSize / 2, bounds.top - handleSize / 2, handleSize, handleSize);
-
-                // Bottom-left handle
                 ctx.fillRect(bounds.left - handleSize / 2, bounds.top + bounds.height - handleSize / 2, handleSize, handleSize);
-
-                // Bottom-right handle
                 ctx.fillRect(bounds.left + bounds.width - handleSize / 2, bounds.top + bounds.height - handleSize / 2, handleSize, handleSize);
             }
-        } else if (backTextElements.includes(element)) {
-            // For text elements on the back side, draw left-aligned with vertical centering
-            ctx.fillStyle = color;
-            ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
+        } else {
+            // Calculate the actual text width plus padding
+            const metrics = ctx.measureText(sampleText);
+            const textWidth = metrics.width;
+            const horizontalPadding = 20; // Add some padding on both sides
+            const verticalPadding = 10;  // Add some padding on top and bottom
             
-            // Add sample text inside the element box - using same font as IdCardPreview
-            ctx.fillStyle = '#000000';
-            ctx.font = '25px "Calibri", "Roboto", sans-serif';
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'middle';
+            let adjustedWidth = textWidth + horizontalPadding;
+            let adjustedHeight = bounds.height;
             
-            // Display sample text based on element type
-            let sampleText = elementMeta[element].label;
-            if (element === 'emp_add') {
-                sampleText = "123 Sample Street, City";
-            } else if (element === 'emp_bday') {
-                sampleText = "Month Day, Year";
-            } else if (element === 'emp_sss') {
-                sampleText = "12-3456789-0";
-            } else if (element === 'emp_phic') {
-                sampleText = "98-7654321-0";
-            } else if (element === 'emp_hdmf') {
-                sampleText = "1234-5678-9012";
-            } else if (element === 'emp_tin') {
-                sampleText = "123-456-789-000";
-            } else if (element === 'emp_emergency_name') {
-                sampleText = "Emergency Contact";
-            } else if (element === 'emp_emergency_num') {
-                sampleText = "(123) 456-7890";
-            } else if (element === 'emp_emergency_add') {
-                sampleText = "456 Emergency Address, City";
+            // For multiline text elements, adjust height
+            if (element === 'emp_add' || element === 'emp_emergency_add') {
+                adjustedHeight = 22.5; // Allow for 2 lines of text
             }
             
-            ctx.fillText(sampleText, bounds.left + 5, bounds.top + bounds.height/2);
+            // Calculate adjusted bounds for the colored background
+            let adjustedLeft, adjustedTop;
             
-            // Show vertical center line to help visualize alignment
+            if (backTextElements.includes(element)) {
+                // For back elements - left aligned, but considering the text width
+                adjustedLeft = bounds.left;
+                adjustedTop = bounds.top;
+            } else {
+                // For centered elements
+                adjustedLeft = bounds.left + (bounds.width - adjustedWidth) / 2;
+                adjustedTop = bounds.top;
+            }
+            
+            // Draw the colored background to fit the text
+            ctx.fillStyle = color;
+            ctx.fillRect(adjustedLeft, adjustedTop, adjustedWidth, adjustedHeight);
+            
+            // Draw sample text
+            ctx.fillStyle = '#000000';
+            
+            if (backTextElements.includes(element)) {
+                // Left-align the text for back elements, but position it properly
+                ctx.textAlign = 'left';
+                ctx.fillText(sampleText, adjustedLeft + 5, adjustedTop + adjustedHeight / 2);
+            } else {
+                // Center the text for other elements
+                ctx.textAlign = 'center';
+                ctx.fillText(sampleText, adjustedLeft + adjustedWidth / 2, adjustedTop + adjustedHeight / 2);
+            }
+            
+            // Draw visual guides for alignment (only when selected)
             if (draggedElement === element) {
                 ctx.save();
                 ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
                 ctx.setLineDash([2, 2]);
-                const centerY = bounds.top + bounds.height/2;
+                
+                // Show vertical center line for all elements
+                const centerY = adjustedTop + adjustedHeight / 2;
                 ctx.beginPath();
-                ctx.moveTo(bounds.left, centerY);
-                ctx.lineTo(bounds.left + bounds.width, centerY);
+                ctx.moveTo(adjustedLeft, centerY);
+                ctx.lineTo(adjustedLeft + adjustedWidth, centerY);
                 ctx.stroke();
+                
+                // For centered elements, also show center alignment
+                if (!backTextElements.includes(element)) {
+                    const centerX = adjustedLeft + adjustedWidth / 2;
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, adjustedTop);
+                    ctx.lineTo(centerX, adjustedTop + adjustedHeight);
+                    ctx.stroke();
+                }
+                
                 ctx.restore();
             }
-        } else {
-            // For text elements on the front, center them around the coordinate point
-            ctx.fillStyle = color;
-            ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
-            
-            // Add sample text inside the element box - using same font as IdCardPreview
-            ctx.fillStyle = '#000000';
-            
-            // Display sample text based on element type with appropriate font settings
-            let sampleText = elementMeta[element].label;
-            
-            if (element === 'emp_name') {
-                ctx.font = 'bold 30px "Calibri", "Roboto", sans-serif';
-                sampleText = "Employee Name";
-                ctx.textBaseline = "middle";
-            } else if (element === 'emp_pos') {
-                ctx.font = 'italic 25px "Calibri", "Roboto", sans-serif';
-                sampleText = "Position";
-            } else if (element === 'emp_idno') {
-                ctx.font = 'bold 18px "Calibri", "Roboto", sans-serif';
-                sampleText = "IDNO";
-            } else if (element === 'emp_sig') {
-                ctx.font = '18px "Calibri", "Roboto", sans-serif';
-                sampleText = "Signature";
-            }
-            
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(sampleText, bounds.left + bounds.width/2, bounds.top + bounds.height/2);
         }
 
         // If this element is being dragged, add a visual indicator
         if (draggedElement === element) {
+            // Calculate the actual bounds we're using
+            const actualLeft = element === 'emp_img' || element === 'emp_qrcode' ? bounds.left : 
+                             backTextElements.includes(element) ? bounds.left :
+                             bounds.left + (bounds.width - ctx.measureText(sampleText).width - 20) / 2;
+            
+            const actualWidth = element === 'emp_img' || element === 'emp_qrcode' ? bounds.width : 
+                              ctx.measureText(sampleText).width + 20;
+            
+            // Draw selection border that fits the actual element size
             ctx.strokeStyle = '#ff0000';
             ctx.lineWidth = 2;
-            ctx.strokeRect(bounds.left - 2, bounds.top - 2, bounds.width + 4, bounds.height + 4);
+            ctx.strokeRect(
+                actualLeft - 2, 
+                bounds.top - 2, 
+                actualWidth + 4, 
+                (element === 'emp_add' || element === 'emp_emergency_add' ? 22.5 : bounds.height) + 4
+            );
 
             // Add element name when dragging
             ctx.fillStyle = '#ff0000';
             ctx.font = '12px Arial';
             ctx.textAlign = 'center';
             
-            // For back text elements, show label above the left side
-            if (backTextElements.includes(element)) {
-                ctx.fillText(elementMeta[element].label, bounds.left + 40, bounds.top - 5);
-            } else {
-                // For other elements, center the label
-                ctx.fillText(elementMeta[element].label, bounds.left + bounds.width / 2, bounds.top - 5);
-            }
+            // Position label above the element
+            ctx.fillText(
+                elementMeta[element].label, 
+                actualLeft + actualWidth / 2, 
+                bounds.top - 5
+            );
 
             ctx.lineWidth = 1;
         }
