@@ -172,6 +172,17 @@ export default function Employee({
         setBulkDeleteModalOpen(true);
     };
 
+    // Function for bulk export
+    const handleBulkExport = () => {
+        if (selectedEmployeeCount > 0) {
+            // Get selected employee UUIDs
+            const employeeUuids = getSelectedEmployeeUuids();
+            
+            // Submit a POST request to the bulk-id-preview route
+            router.post(route('employee.bulk-id-preview'), { uuids: employeeUuids });
+        }
+    };
+
     const closeBulkDeleteModal = () => {
         setBulkDeleteModalOpen(false);
     };
@@ -765,8 +776,19 @@ export default function Employee({
                     </div>
 
                     <div className="ml-auto">
-                        {selectedEmployeeCount >= 2 && (
+                        {selectedEmployeeCount > 1 && (
                             <div className="flex items-center space-x-2">
+                                <button
+                                    type="button"
+                                    onClick={handleBulkExport}
+                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:bg-green-700 dark:hover:bg-green-800"
+                                >
+                                    <span className="text-sm dark:text-gray-300 mr-1.5">
+                                        {selectedEmployeeCount}
+                                    </span>
+                                    <CreditCard className="h-4 w-4 mr-1.5" />
+                                    Export ID Cards
+                                </button>
                                 <button
                                     type="button"
                                     onClick={openBulkDeleteModal}
