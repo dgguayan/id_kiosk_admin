@@ -527,6 +527,83 @@ class EmployeeController extends Controller
     }
     
     /**
+     * Display the ID card preview for multiple selected employees.
+     */
+    public function bulkIdPreview(Request $request)
+    {
+        try {
+            // Validate the request
+            $validated = $request->validate([
+                'uuids' => 'required|array',
+                'uuids.*' => 'string'
+            ]);
+
+            // Find all employees by UUIDs
+            $employees = Employee::whereIn('uuid', $validated['uuids'])
+                ->with('businessUnit')
+                ->get();
+            
+            // Format the employees collection for frontend
+            $formattedEmployees = $employees->map(function ($employee) {
+                // Add business unit name to each employee
+                $employee->businessunit_name = $employee->businessUnit ? $employee->businessUnit->businessunit_name : null;
+                return $employee;
+            });
+            
+            // Group employees by business unit for template association
+            $employeesByBusinessUnit = $employees->groupBy('businessunit_id');
+            
+            // Get templates for each business unit
+            $templatesByBusinessUnit = [];
+            foreach ($employeesByBusinessUnit as $businessUnitId => $groupEmployees) {
+                // Find template by business unit ID
+                $templateImage = DB::table('template_images')
+                    ->where('businessunit_id', $businessUnitId)
+                    ->first();
+                
+                // Use the template ID from template_images if found, otherwise use default
+                $templateId = $templateImage ? $templateImage->id : 1;
+                
+                $templatesByBusinessUnit[$businessUnitId] = [
+                    'template_id' => $templateId,
+                    'template_data' => $this->getTemplateImagesData($templateId),
+                    'front_template' => $this->getFrontTemplatePath($templateId),
+                    'back_template' => $this->getBackTemplatePath($templateId)
+                ];
+            }
+            
+            // Log the employees and templates data
+            Log::info('Bulk ID Card preview request', [
+                'employee_count' => $employees->count(),
+                'business_units' => $employeesByBusinessUnit->keys()->toArray()
+            ]);
+            
+            // Ensure the public/images directory exists
+            $imagesDir = public_path('images');
+            if (!file_exists($imagesDir)) {
+                mkdir($imagesDir, 0755, true);
+            }
+            
+            // Create default templates if they don't exist
+            $this->createDefaultTemplatesIfNeeded();
+            
+            return Inertia::render('Employee/BulkIdCardPreview', [
+                'employees' => $formattedEmployees,
+                'templatesByBusinessUnit' => $templatesByBusinessUnit,
+                'employeeCount' => $employees->count(),
+                'selectedUuids' => $validated['uuids']
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to load bulk ID card preview: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->route('employee.index')->with('error', 'Failed to load bulk ID card preview: ' . $e->getMessage());
+        }
+    }
+    
+    /**
      * Get template images data from the database.
      */
     private function getTemplateImagesData(int $templateId): array

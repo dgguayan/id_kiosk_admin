@@ -23,6 +23,8 @@ Route::put('/employee/{id}', [EmployeeController::class, 'update'])->name('emplo
 Route::get('/employee/image', [EmployeeController::class, 'serveImage'])->name('employee.image');
 // Add the ID card preview route
 Route::get('/employee/{id}/id-preview', [EmployeeController::class, 'idPreview'])->name('employee.id-preview')->middleware('auth');
+// Add the bulk ID card preview route
+Route::post('/employee/bulk-id-preview', [EmployeeController::class, 'bulkIdPreview'])->name('employee.bulk-id-preview')->middleware('auth');
 Route::get('/employee/placeholder-image', [EmployeeController::class, 'placeholderImage'])->name('employee.placeholder-image');
 
 //business unit
