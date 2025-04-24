@@ -3,6 +3,7 @@
 use App\Http\Controllers\BusinessUnitController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\TemplateImagesController;
+use App\Http\Controllers\PendingIdController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -14,6 +15,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
+});
+
+// Add this route group for Pending ID management
+Route::middleware(['auth'])->group(function () {
+    Route::get('/pending-id', [PendingIdController::class, 'index'])->name('pending-id.index');
+    Route::delete('/pending-id/{id}', [PendingIdController::class, 'destroy'])->name('pending-id.destroy');
+    Route::post('/pending-id/bulk-destroy', [PendingIdController::class, 'bulkDestroy'])->name('pending-id.bulk-destroy');
 });
 
 //employee

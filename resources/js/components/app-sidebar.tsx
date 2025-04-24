@@ -15,7 +15,7 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Pending IDs',
-        href: '/pending-ids',
+        href: '/pending-id',
         icon: IdCard,
     },
     {

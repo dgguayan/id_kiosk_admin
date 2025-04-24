@@ -132,16 +132,12 @@ class EmployeeController extends Controller
             // Get the next available counter number from the last employee
             $lastEmployee = Employee::orderBy('employee_id_counter', 'desc')->first();
             $counter = $lastEmployee ? $lastEmployee->employee_id_counter + 1 : 1;
-            
+            $default_counter = 1;
             // Generate the ID without prefix but keep the 6-digit zero-padded format
             $idNo = str_pad($counter, 6, '0', STR_PAD_LEFT);
             
-            // Old code with prefix (commented out)
-            // $idPrefix = 'EMP-';
-            // $idNo = $idPrefix . str_pad($counter, 6, '0', STR_PAD_LEFT);
-            
             // Create the new employee within a transaction
-            DB::transaction(function () use ($validated, $idNo, $counter, $request) {
+            DB::transaction(function () use ($validated, $idNo, $default_counter, $request) {
                 $employee = new Employee();
                 $employee->id_no = $idNo;
                 $employee->employee_firstname = $validated['employee_firstname'];
@@ -160,7 +156,7 @@ class EmployeeController extends Controller
                 $employee->emergency_contact_number = $validated['emergency_contact_number'] ?? null;
                 $employee->emergency_address = $validated['emergency_address'] ?? null;
                 $employee->employment_status = $validated['employment_status'];
-                $employee->employee_id_counter = $counter;
+                $employee->employee_id_counter = $default_counter;
                 $employee->uuid = \Illuminate\Support\Str::uuid();
                 $employee->id_status = $validated['id_status'] ?? 'pending';
                 

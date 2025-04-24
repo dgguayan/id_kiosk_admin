@@ -1,11 +1,10 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
-import { XCircle, CheckCircle } from 'lucide-react';
 import { Table } from '@/components/ui/data-table';
 import { Pagination } from '@/components/ui/pagination';
-import { Search, Plus, Edit, Trash, Eye, CreditCard } from 'lucide-react';
+import { Search, Eye, CreditCard, Edit, Plus, Trash } from 'lucide-react';
 import { debounce } from 'lodash';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import EmployeeViewModal from '@/components/modals/EmployeeViewModal';
@@ -16,8 +15,8 @@ import EmployeeBulkDeleteModal from '@/components/modals/EmployeeBulkDeleteModal
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Employee List',
-        href: '/employee',
+        title: 'Pending ID List',
+        href: '/pending-id',
     },
 ];
 
@@ -55,27 +54,7 @@ interface PageMeta {
     per_page: number;
 }
 
-// Helper function to generate consistent colors based on name
-const getAvatarColor = (name: string): string => {
-    if (!name) return "bg-gray-500";
-    
-    // Generate a simple hash from the name
-    const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    
-    // List of tailwind color classes
-    const colors = [
-        "bg-blue-600", "bg-indigo-600", "bg-purple-600", 
-        "bg-pink-600", "bg-red-600", "bg-orange-600",
-        "bg-amber-600", "bg-yellow-600", "bg-lime-600", 
-        "bg-green-600", "bg-emerald-600", "bg-teal-600", 
-        "bg-cyan-600", "bg-sky-600"
-    ];
-    
-    // Return a color based on the hash
-    return colors[hash % colors.length];
-};
-
-export default function Employee({ 
+export default function PendingId({ 
     employees = [], 
     meta = null, 
     filters = {},
@@ -96,134 +75,44 @@ export default function Employee({
     const [currentPage, setCurrentPage] = useState(meta?.current_page || 1);
     const [lastPage, setLastPage] = useState(meta?.last_page || 1);
     const [searchQuery, setSearchQuery] = useState(filters?.search || '');
-    const [selectedEmployees, setSelectedEmployees] = useState<Record<number, boolean>>({});
-    const [selectAll, setSelectAll] = useState(false);
     const [sortField, setSortField] = useState<string>('employee_lastname');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const [businessUnitFilter, setBusinessUnitFilter] = useState(filters?.businessunit_id || '');
-    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-    const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
-    const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
-
+    
+    // Add selection state
+    const [selectedEmployees, setSelectedEmployees] = useState<Record<number, boolean>>({});
+    const [selectAll, setSelectAll] = useState(false);
+    
+    // View modal state
     const [viewModalOpen, setViewModalOpen] = useState(false);
     const [employeeToView, setEmployeeToView] = useState<Employee | null>(null);
-    
+
+    // Edit modal state
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [employeeToEdit, setEmployeeToEdit] = useState<Employee | null>(null);
-
+    
+    // Add modal state
     const [addModalOpen, setAddModalOpen] = useState(false);
-
+    
+    // Delete modal state
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+    
+    // Bulk delete modal state
+    const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
+    
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    
+    // Compute selected employee count
     const selectedEmployeeCount = Object.values(selectedEmployees).filter(Boolean).length;
-
+    
+    // Get the selected employee UUIDs
     const getSelectedEmployeeUuids = () => {
         return Object.entries(selectedEmployees)
             .filter(([_, isSelected]) => isSelected)
             .map(([uuid]) => uuid);
     };
-
-    const openBulkDeleteModal = () => {
-        setBulkDeleteModalOpen(true);
-    };
-
-    const closeBulkDeleteModal = () => {
-        setBulkDeleteModalOpen(false);
-    };
-
-    const handleBulkExport = () => {
-        if (selectedEmployeeCount > 0) {
-            const employeeUuids = getSelectedEmployeeUuids();
-            router.post(route('employee.bulk-id-preview'), { uuids: employeeUuids });
-        }
-    };
-
-    const handleBulkDeleteSuccess = () => {
-        setSuccessMessage(`Successfully deleted ${selectedEmployeeCount} employees`);
-        
-        // Clear selections
-        setSelectedEmployees({});
-        setSelectAll(false);
-        
-        // Refresh the data
-        setLoading(true);
-        router.get(route('employee.index'), {
-            page: currentPage,
-            search: searchQuery,
-            businessunit_id: businessUnitFilter,
-            sort_by: sortField,
-            sort_direction: sortOrder
-        }, {
-            only: ['employees', 'meta'],
-            preserveState: true,
-            preserveScroll: true,
-            onSuccess: () => setLoading(false)
-        });
-        
-        setTimeout(() => {
-            setSuccessMessage(null);
-        }, 3000);
-    };
     
-    const openDeleteModal = (employee: Employee) => {
-        setEmployeeToDelete(employee);
-        setDeleteModalOpen(true);
-    };
-
-    const closeDeleteModal = () => {
-        setDeleteModalOpen(false);
-        setTimeout(() => {
-            setEmployeeToDelete(null);
-        }, 200);
-    };
-
-    const handleDeleteSuccess = () => {
-        if (employeeToDelete) {
-            setSuccessMessage(`Successfully deleted ${employeeToDelete.employee_firstname} ${employeeToDelete.employee_lastname}`);
-            
-            // Refresh the data
-            setLoading(true);
-            router.get(route('employee.index'), {
-                page: currentPage,
-                search: searchQuery,
-                businessunit_id: businessUnitFilter,
-                sort_by: sortField,
-                sort_direction: sortOrder
-            }, {
-                only: ['employees', 'meta'],
-                preserveState: true,
-                preserveScroll: true,
-                onSuccess: () => setLoading(false)
-            });
-            
-            setTimeout(() => {
-                setSuccessMessage(null);
-            }, 3000);
-        }
-    };
-
-    const handleAddSuccess = () => {
-        setSuccessMessage(`Employee added successfully`);
-        
-        // Refresh the employee list
-        setLoading(true);
-        router.get(route('employee.index'), {
-            page: currentPage,
-            search: searchQuery,
-            businessunit_id: businessUnitFilter,
-            sort_by: sortField,
-            sort_direction: sortOrder
-        }, {
-            only: ['employees', 'meta'],
-            preserveState: true,
-            preserveScroll: true,
-            onSuccess: () => setLoading(false)
-        });
-        
-        setTimeout(() => {
-            setSuccessMessage(null);
-        }, 3000);
-    };
-
     useEffect(() => {
         setEmployeesData(Array.isArray(employees) ? employees : []);
         setLoading(false);
@@ -236,7 +125,8 @@ export default function Employee({
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
         setLoading(true);
-        router.get(route('employee.index', { 
+        
+        router.get(route('pending-id.index', { 
             page, 
             search: searchQuery,
             businessunit_id: businessUnitFilter,
@@ -252,7 +142,8 @@ export default function Employee({
     const debouncedSearch = debounce((query: string) => {
         setCurrentPage(1);
         setLoading(true);
-        router.get(route('employee.index', { 
+        
+        router.get(route('pending-id.index', { 
             search: query, 
             page: 1,
             businessunit_id: businessUnitFilter,
@@ -268,6 +159,7 @@ export default function Employee({
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const query = e.target.value;
         setSearchQuery(query);
+        
         debouncedSearch(query);
     };
 
@@ -276,7 +168,8 @@ export default function Employee({
         setBusinessUnitFilter(value);
         setCurrentPage(1);
         setLoading(true);
-        router.get(route('employee.index', { 
+        
+        router.get(route('pending-id.index', { 
             page: 1, 
             search: searchQuery,
             businessunit_id: value,
@@ -295,32 +188,14 @@ export default function Employee({
         };
     }, []);
 
-    const handleSelectAll = () => {
-        const newSelectAll = !selectAll;
-        setSelectAll(newSelectAll);
-        const newSelectedEmployees: Record<number, boolean> = {};
-        employeesData.forEach(employee => {
-            newSelectedEmployees[employee.uuid] = newSelectAll;
-        });
-        setSelectedEmployees(newSelectedEmployees);
-    };
-    
-    const handleSelectEmployee = (uuid: number) => {
-        const newSelectedEmployees = {
-            ...selectedEmployees,
-            [uuid]: !selectedEmployees[uuid]
-        };
-        setSelectedEmployees(newSelectedEmployees);
-        const allSelected = employeesData.every(employee => newSelectedEmployees[employee.uuid]);
-        setSelectAll(allSelected);
-    };
-
     const handleSort = (field: string) => {
         const newDirection = field === sortField && sortOrder === 'asc' ? 'desc' : 'asc';
+        
         setSortField(field);
         setSortOrder(newDirection);
+        
         setLoading(true);
-        router.get(route('employee.index', { 
+        router.get(route('pending-id.index', { 
             page: currentPage, 
             search: searchQuery,
             businessunit_id: businessUnitFilter,
@@ -333,6 +208,116 @@ export default function Employee({
         });
     };
 
+    const handleSelectAll = () => {
+        const newSelectAll = !selectAll;
+        setSelectAll(newSelectAll);
+        
+        const newSelectedEmployees: Record<number, boolean> = {};
+        employeesData.forEach(employee => {
+            newSelectedEmployees[employee.uuid] = newSelectAll;
+        });
+        
+        setSelectedEmployees(newSelectedEmployees);
+    };
+    
+    const handleSelectEmployee = (uuid: number) => {
+        const newSelectedEmployees = {
+            ...selectedEmployees,
+            [uuid]: !selectedEmployees[uuid]
+        };
+        
+        setSelectedEmployees(newSelectedEmployees);
+        
+        const allSelected = employeesData.every(employee => newSelectedEmployees[employee.uuid]);
+        setSelectAll(allSelected);
+    };
+
+    // Functions for bulk delete
+    const openBulkDeleteModal = () => {
+        setBulkDeleteModalOpen(true);
+    };
+
+    const closeBulkDeleteModal = () => {
+        setBulkDeleteModalOpen(false);
+    };
+
+    const handleBulkDeleteSuccess = () => {
+        setSuccessMessage(`Successfully deleted ${selectedEmployeeCount} employees`);
+        
+        // Clear selections
+        setSelectedEmployees({});
+        setSelectAll(false);
+        
+        // Refresh the data
+        setLoading(true);
+        router.get(route('pending-id.index'), {
+            page: currentPage,
+            search: searchQuery,
+            businessunit_id: businessUnitFilter,
+            sort_by: sortField,
+            sort_direction: sortOrder
+        }, {
+            only: ['employees', 'meta'],
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => setLoading(false)
+        });
+        
+        setTimeout(() => {
+            setSuccessMessage(null);
+        }, 3000);
+    };
+    
+    // Function for bulk export
+    const handleBulkExport = () => {
+        if (selectedEmployeeCount > 0) {
+            // Get selected employee UUIDs
+            const employeeUuids = getSelectedEmployeeUuids();
+            
+            // Submit a POST request to the bulk-id-preview route
+            router.post(route('employee.bulk-id-preview'), { uuids: employeeUuids });
+        }
+    };
+
+    // Delete single employee functions
+    const openDeleteModal = (employee: Employee) => {
+        setEmployeeToDelete(employee);
+        setDeleteModalOpen(true);
+    };
+
+    const closeDeleteModal = () => {
+        setDeleteModalOpen(false);
+        setTimeout(() => {
+            setEmployeeToDelete(null);
+        }, 200);
+    };
+
+    const handleDeleteSuccess = () => {
+        if (employeeToDelete) {
+            setSuccessMessage(`Successfully deleted ${employeeToDelete.employee_firstname} ${employeeToDelete.employee_lastname}`);
+            
+            // Refresh the data
+            setLoading(true);
+            router.get(route('pending-id.index'), {
+                page: currentPage,
+                search: searchQuery,
+                businessunit_id: businessUnitFilter,
+                sort_by: sortField,
+                sort_direction: sortOrder
+            }, {
+                only: ['employees', 'meta'],
+                preserveState: true,
+                preserveScroll: true,
+                onSuccess: () => setLoading(false)
+            });
+            
+            setTimeout(() => {
+                setSuccessMessage(null);
+            }, 3000);
+        }
+    };
+
+    // View employee details functions
     const openViewModal = (employee: Employee) => {
         const formattedEmployee = {
             ...employee,
@@ -340,6 +325,7 @@ export default function Employee({
                 ? new Date(employee.birthday).toISOString().split('T')[0]
                 : ''
         };
+        
         setEmployeeToView(formattedEmployee);
         setViewModalOpen(true);
     };
@@ -351,14 +337,7 @@ export default function Employee({
         }, 200);
     };
 
-    const openAddModal = () => {
-        setAddModalOpen(true);
-    };
-
-    const closeAddModal = () => {
-        setAddModalOpen(false);
-    };
-
+    // Edit employee functions
     const openEditModal = (employee: Employee) => {
         setEmployeeToEdit(employee);
         setEditModalOpen(true);
@@ -373,27 +352,74 @@ export default function Employee({
 
     const handleEditSuccess = () => {
         setSuccessMessage(`Employee updated successfully`);
+        
+        // Refresh the employees list
         setLoading(true);
-        router.reload();
+        router.get(route('pending-id.index', { 
+            page: currentPage, 
+            search: searchQuery,
+            businessunit_id: businessUnitFilter,
+            sort_by: sortField,
+            sort_direction: sortOrder
+        }), {}, {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => setLoading(false),
+        });
+        
+        setTimeout(() => {
+            setSuccessMessage(null);
+        }, 3000);
     };
 
     const handleEditFromViewModal = (employee: Employee) => {
+        closeViewModal();
         openEditModal(employee);
+    };
+
+    // Add employee function
+    const openAddModal = () => {
+        setAddModalOpen(true);
+    };
+
+    const closeAddModal = () => {
+        setAddModalOpen(false);
+    };
+
+    const handleAddSuccess = () => {
+        setSuccessMessage(`Employee added successfully`);
+        
+        // Refresh the employees list
+        setLoading(true);
+        router.get(route('pending-id.index', { 
+            page: currentPage, 
+            search: searchQuery,
+            businessunit_id: businessUnitFilter,
+            sort_by: sortField,
+            sort_direction: sortOrder
+        }), {}, {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => setLoading(false),
+        });
+        
+        setTimeout(() => {
+            setSuccessMessage(null);
+        }, 3000);
     };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Employee List" />
+            <Head title="Pending ID List" />
             
             <div className="px-4 sm:px-6 lg:px-8 mt-3">
                 <div className="sm:flex sm:items-center">
                     <div className="sm:flex-auto">
-                        <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white">List of All Employees</h1>
+                        <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white">List of Pending IDs</h1>
                         <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
-                            A list of all employees including their employee id number, name, email, position, business unit and other status.
+                            A list of all employees with pending ID status that need to be processed.
                         </p>
                     </div>
-
                     <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
                         <button
                             type="button"
@@ -561,7 +587,7 @@ export default function Employee({
                         <Table.Body 
                             isLoading={loading} 
                             colSpan={8}
-                            emptyMessage="No employees found"
+                            emptyMessage="No pending ID requests found"
                         >
                             {employeesData.map((employee) => (
                                 <Table.Row key={employee.uuid}>
@@ -598,6 +624,7 @@ export default function Employee({
                                             <button 
                                                 className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                                                 onClick={() => openViewModal(employee)}
+                                                title="View Employee Details"
                                             >
                                                 <Eye className="h-4 w-4" />
                                                 <span className="sr-only">View {employee.employee_firstname}</span>
@@ -605,6 +632,7 @@ export default function Employee({
                                             <button 
                                                 className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
                                                 onClick={() => openEditModal(employee)}
+                                                title="Edit Employee"
                                             >
                                                 <Edit className="h-4 w-4" />
                                                 <span className="sr-only">Edit {employee.employee_firstname}</span>
@@ -612,6 +640,7 @@ export default function Employee({
                                             <button 
                                                 className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                                                 onClick={() => openDeleteModal(employee)}
+                                                title="Delete Employee"
                                             >
                                                 <Trash className="h-4 w-4" />
                                                 <span className="sr-only">Delete {employee.employee_firstname}</span>
@@ -619,6 +648,7 @@ export default function Employee({
                                             <button 
                                                 className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
                                                 onClick={() => router.visit(route('employee.id-preview', employee.uuid))}
+                                                title="Generate ID Card"
                                             >
                                                 <CreditCard className="h-4 w-4" />
                                                 <span className="sr-only">ID Card {employee.employee_firstname}</span>
@@ -641,7 +671,7 @@ export default function Employee({
                 </div>
             </div>
 
-            {/* Use the reusable EmployeeViewModal component with onEdit prop */}
+            {/* Use the reusable EmployeeViewModal component */}
             <EmployeeViewModal
                 isOpen={viewModalOpen}
                 employee={employeeToView}
@@ -649,8 +679,8 @@ export default function Employee({
                 showEditButton={true}
                 onEdit={handleEditFromViewModal}
             />
-
-            {/* Replace the existing Edit Employee Modal with the reusable component */}
+            
+            {/* Add the EmployeeEditModal component */}
             <EmployeeEditModal 
                 isOpen={editModalOpen}
                 employee={employeeToEdit}
@@ -659,7 +689,7 @@ export default function Employee({
                 onSuccess={handleEditSuccess}
             />
 
-            {/* Add Employee Modal */}
+            {/* Add the EmployeeAddModal component */}
             <EmployeeAddModal
                 isOpen={addModalOpen}
                 onClose={closeAddModal}
@@ -667,31 +697,32 @@ export default function Employee({
                 onSuccess={handleAddSuccess}
             />
 
-            {/* Replace with reusable EmployeeDeleteModal component */}
+            {/* Add the EmployeeDeleteModal component */}
             <EmployeeDeleteModal
                 isOpen={deleteModalOpen}
                 onClose={closeDeleteModal}
                 employee={employeeToDelete}
                 onSuccess={handleDeleteSuccess}
-                routeName="employee.destroy"
             />
 
-            {/* Replace with reusable EmployeeBulkDeleteModal component */}
+            {/* Add the EmployeeBulkDeleteModal component */}
             <EmployeeBulkDeleteModal
                 isOpen={bulkDeleteModalOpen}
                 onClose={closeBulkDeleteModal}
                 selectedCount={selectedEmployeeCount}
                 selectedUuids={getSelectedEmployeeUuids()}
                 onSuccess={handleBulkDeleteSuccess}
-                routeName="employee.bulk-destroy"
             />
 
+            {/* Success message toast */}
             {successMessage && (
                 <div className="fixed top-4 right-4 z-50 max-w-md">
                     <div className="rounded-md bg-green-50 p-4 shadow-lg dark:bg-green-900">
                         <div className="flex">
                             <div className="flex-shrink-0">
-                                <CheckCircle className="h-5 w-5 text-green-400 dark:text-green-300" aria-hidden="true" />
+                                <svg className="h-5 w-5 text-green-400 dark:text-green-300" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
                             </div>
                             <div className="ml-3">
                                 <p className="text-sm font-medium text-green-800 dark:text-green-200">{successMessage}</p>
@@ -704,7 +735,9 @@ export default function Employee({
                                         onClick={() => setSuccessMessage(null)}
                                     >
                                         <span className="sr-only">Dismiss</span>
-                                        <XCircle className="h-5 w-5" aria-hidden="true" />
+                                        <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                        </svg>
                                     </button>
                                 </div>
                             </div>
@@ -715,4 +748,3 @@ export default function Employee({
         </AppLayout>
     );
 }
-
