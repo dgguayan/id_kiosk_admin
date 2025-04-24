@@ -35,7 +35,7 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Backlogs',
-        href: '/backlogs',
+        href: '/activity-log',
         icon: FileClock,
     },
     {

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\BusinessUnitController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\TemplateImagesController;
@@ -61,6 +62,13 @@ Route::get('/network-images/{folder}/{filename}', function ($folder, $filename) 
         'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
     ]);
 })->middleware('auth')->name('network.image');
+
+// Activity Log Routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('/activity-log', [ActivityLogController::class, 'index'])->name('activity-log.index');
+    Route::get('/activity-log/{id}', [ActivityLogController::class, 'show'])->name('activity-log.show');
+    Route::delete('/activity-log/clear-all', [ActivityLogController::class, 'clearAll'])->name('activity-log.clear-all');
+});
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
