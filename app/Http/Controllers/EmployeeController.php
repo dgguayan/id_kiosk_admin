@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use App\Services\ActivityLogService;
 
 class EmployeeController extends Controller
 {
@@ -120,7 +121,6 @@ class EmployeeController extends Controller
             'emergency_contact_number' => 'nullable|string|max:255',
             'emergency_address' => 'nullable|string|max:255',
             'id_status' => 'nullable|string|in:pending,printed',
-            'employee_id_counter' => 'nullable|integer',
             'image_person' => 'nullable|image|max:2048',
             'image_signature' => 'nullable|image|max:2048',
             'image_qrcode' => 'nullable|image|max:2048',
@@ -128,16 +128,15 @@ class EmployeeController extends Controller
         ]);
         
         try {
-            // Generate a unique ID number
-            // Get the next available counter number from the last employee
-            $lastEmployee = Employee::orderBy('employee_id_counter', 'desc')->first();
-            $counter = $lastEmployee ? $lastEmployee->employee_id_counter + 1 : 1;
-            $default_counter = 1;
-            // Generate the ID without prefix but keep the 6-digit zero-padded format
-            $idNo = str_pad($counter, 6, '0', STR_PAD_LEFT);
+            // Get the maximum id_no value directly instead of employee_id_counter
+            $maxIdNo = Employee::max('id_no') ?? 0;
+            $newIdNo = (int)$maxIdNo + 1;
+            
+            // Generate the ID with 6-digit zero-padded format
+            $idNo = str_pad($newIdNo, 6, '0', STR_PAD_LEFT);
             
             // Create the new employee within a transaction
-            DB::transaction(function () use ($validated, $idNo, $default_counter, $request) {
+            DB::transaction(function () use ($validated, $idNo, $request) {
                 $employee = new Employee();
                 $employee->id_no = $idNo;
                 $employee->employee_firstname = $validated['employee_firstname'];
@@ -156,7 +155,7 @@ class EmployeeController extends Controller
                 $employee->emergency_contact_number = $validated['emergency_contact_number'] ?? null;
                 $employee->emergency_address = $validated['emergency_address'] ?? null;
                 $employee->employment_status = $validated['employment_status'];
-                $employee->employee_id_counter = $default_counter;
+                $employee->employee_id_counter = 1; // Always set to 1
                 $employee->uuid = \Illuminate\Support\Str::uuid();
                 $employee->id_status = $validated['id_status'] ?? 'pending';
                 
@@ -204,6 +203,15 @@ class EmployeeController extends Controller
             });
             
             $fullName = $validated['employee_firstname'] . ' ' . $validated['employee_lastname'];
+            
+            // Log the activity
+            ActivityLogService::log(
+                'employee_created',
+                "Employee {$fullName} was created",
+                'App\Models\Employee',
+                $idNo,
+                ['name' => $fullName, 'position' => $validated['position']]
+            );
             
             // Return a JSON response for API requests
             if ($request->wantsJson()) {
@@ -282,6 +290,8 @@ class EmployeeController extends Controller
         try {
             $employee = Employee::where('uuid', $id)->firstOrFail();
             Log::info('Employee found for update', ['uuid' => $id, 'employee_id' => $employee->id]);
+            
+            $oldData = $employee->toArray();
             
             DB::transaction(function () use ($validated, $request, $employee) {
                 $employee->employee_firstname = $validated['employee_firstname'];
@@ -372,6 +382,18 @@ class EmployeeController extends Controller
             
             $fullName = $validated['employee_firstname'] . ' ' . $validated['employee_lastname'];
             
+            // Log the activity
+            ActivityLogService::log(
+                'employee_updated',
+                "Employee {$fullName} was updated",
+                'App\Models\Employee',
+                $employee->id,
+                [
+                    'old' => array_intersect_key($oldData, $validated),
+                    'new' => $validated
+                ]
+            );
+            
             if ($request->wantsJson()) {
                 Log::info('Returning JSON response for employee update', ['uuid' => $id]);
                 return response()->json([
@@ -412,6 +434,15 @@ class EmployeeController extends Controller
             $employeeName = $employee->employee_firstname . ' ' . $employee->employee_lastname;
             
             $employee->delete();
+            
+            // Log the activity
+            ActivityLogService::log(
+                'employee_deleted',
+                "Employee {$employeeName} was deleted",
+                'App\Models\Employee',
+                $id,
+                ['name' => $employeeName]
+            );
             
             return redirect()->route('employee.index')->with('success', "Employee $employeeName has been deleted successfully.");
             
