@@ -5,6 +5,7 @@ use App\Http\Controllers\BusinessUnitController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\TemplateImagesController;
 use App\Http\Controllers\PendingIdController;
+use App\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -68,6 +69,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/activity-log', [ActivityLogController::class, 'index'])->name('activity-log.index');
     Route::get('/activity-log/{id}', [ActivityLogController::class, 'show'])->name('activity-log.show');
     Route::delete('/activity-log/clear-all', [ActivityLogController::class, 'clearAll'])->name('activity-log.clear-all');
+});
+
+// User Management Routes
+Route::middleware('auth')->group(function () {
+    Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
+    Route::post('/user-management', [UserManagementController::class, 'store'])->name('user-management.store');
+    Route::put('/user-management/{user}', [UserManagementController::class, 'update'])->name('user-management.update');
+    Route::delete('/user-management/{user}', [UserManagementController::class, 'destroy'])->name('user-management.destroy');
 });
 
 require __DIR__.'/settings.php';

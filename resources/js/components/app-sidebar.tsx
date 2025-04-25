@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, IdCard, UsersRound, BriefcaseBusiness, NotepadTextDashed, FileClock, ChartNoAxesGantt } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid, IdCard, UsersRound, BriefcaseBusiness, NotepadTextDashed, FileClock, Users } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -39,9 +39,9 @@ const mainNavItems: NavItem[] = [
         icon: FileClock,
     },
     {
-        title: 'User Managemment',
+        title: 'User Management',
         href: '/user-management',
-        icon: ChartNoAxesGantt,
+        icon: Users,
     }
 
 ];
