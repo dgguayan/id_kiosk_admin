@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BusinessUnit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 
@@ -123,6 +124,10 @@ class BusinessUnitController extends Controller
      */
     public function destroy(string $id)
     {
+        if (Auth::user()->role !== 'Admin') {
+            abort(403, 'Only administrators can delete users.');
+        }
+        
         $businessUnit = BusinessUnit::findOrFail($id);
         $businessUnit->delete();
 
@@ -134,6 +139,10 @@ class BusinessUnitController extends Controller
      */
     public function bulkDestroy(Request $request)
     {
+        if (Auth::user()->role !== 'Admin') {
+            abort(403, 'Only administrators can delete users.');
+        }
+        
         $validator = Validator::make($request->all(), [
             'ids' => 'required|array',
             'ids.*' => 'exists:business_units,businessunit_id',

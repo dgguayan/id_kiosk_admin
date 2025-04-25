@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BusinessUnit;
 use App\Models\Employee;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -428,6 +429,10 @@ class EmployeeController extends Controller
      */
     public function destroy(string $id)
     {
+        if (Auth::user()->role !== 'Admin') {
+            abort(403, 'Only administrators can delete users.');
+        }
+        
         try {
             $employee = Employee::where('uuid', $id)->firstOrFail();
             
@@ -456,6 +461,10 @@ class EmployeeController extends Controller
      */
     public function bulkDestroy(Request $request)
     {
+        if (Auth::user()->role !== 'Admin') {
+            abort(403, 'Only administrators can delete users.');
+        }
+        
         $validated = $request->validate([
             'uuids' => 'required|array',
             'uuids.*' => 'string'

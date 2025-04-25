@@ -3,7 +3,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState, useEffect, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { CheckCircle, XCircle, Plus, Edit, Info } from 'lucide-react';
+import { CheckCircle, XCircle, Plus, Edit, Info, Trash } from 'lucide-react';
 import { Search } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -30,12 +30,14 @@ export default function IdTemplatesIndex({
     templates = [], 
     businessUnits = [], 
     pageTitle = '', 
-    selectedBusinessUnit = 'all' 
+    selectedBusinessUnit = 'all',
+    currentUserRole = 'HR'  // Add this prop
 }: { 
     templates?: TemplateImage[],
     businessUnits?: BusinessUnit[],
     pageTitle?: string,
-    selectedBusinessUnit?: string | number
+    selectedBusinessUnit?: string | number,
+    currentUserRole?: string;
 }) {
     const [addModalOpen, setAddModalOpen] = useState(false);
     const [editModalOpen, setEditModalOpen] = useState(false);
@@ -232,6 +234,26 @@ export default function IdTemplatesIndex({
         });
     };
 
+    // Add this near your other state variables
+    const isAdmin = currentUserRole === 'Admin';
+
+    // Add this function to handle template deletion
+    const handleDeleteTemplate = (template: TemplateImage) => {
+        if (confirm('Are you sure you want to delete this template?')) {
+            router.delete(route('id-templates.destroy', template.id), {
+                onSuccess: () => {
+                    setSuccessMessage('Template deleted successfully');
+                    setTimeout(() => {
+                        setSuccessMessage(null);
+                    }, 3000);
+                },
+                onError: (errors) => {
+                    console.error(errors);
+                },
+            });
+        }
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={pageTitle} />
@@ -331,12 +353,22 @@ export default function IdTemplatesIndex({
                                             <Info className="h-4 w-4 mr-2" /> View ID Layouts
                                         </Link>
                                         
-                                        <button
-                                            onClick={() => openEditModal(template)}
-                                            className="inline-flex items-center rounded-md bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-                                        >
-                                            <Edit className="h-4 w-4 mr-2" /> Edit
-                                        </button>
+                                        <div>
+                                            <button
+                                                onClick={() => openEditModal(template)}
+                                                className="inline-flex items-center rounded-md bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 mr-2"
+                                            >
+                                                <Edit className="h-4 w-4 mr-2" /> Edit
+                                            </button>
+                                            {isAdmin && (
+                                                <button
+                                                    onClick={() => handleDeleteTemplate(template)}
+                                                    className="inline-flex items-center rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
+                                                >
+                                                    <Trash className="h-4 w-4 mr-2" /> Delete
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                     
                                     <div className="flex gap-4">
