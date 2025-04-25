@@ -20,7 +20,7 @@ const staticDashboardData = {
         {
             id: 1,
             code: 'MMHI',
-            name: 'Main Headquarters',
+            name: 'Holdings Incorporated',
             totalEmployees: 8,
             idCompletionPercentage: 0,
             logoUrl: '/images/logos/mmhi-logo.png'
@@ -28,7 +28,7 @@ const staticDashboardData = {
         {
             id: 2,
             code: 'MMEI',
-            name: 'Enterprises, Inc.',
+            name: 'Enterprises Incorporated',
             totalEmployees: 13,
             idCompletionPercentage: 0,
             logoUrl: '/images/logos/mmei-logo.png'
@@ -59,6 +59,7 @@ const staticDashboardData = {
         }
     ]
 };
+
 
 export default function Dashboard() {
     return (
