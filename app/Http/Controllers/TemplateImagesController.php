@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\TemplateImage;
 use App\Models\BusinessUnit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -211,6 +212,10 @@ class TemplateImagesController extends Controller
      */
     public function destroy($id)
     {
+        if (Auth::user()->role !== 'Admin') {
+            abort(403, 'Only administrators can delete users.');
+        }
+        
         $template = TemplateImage::findOrFail($id);
         
         // Delete images from network storage

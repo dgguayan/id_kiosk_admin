@@ -79,7 +79,8 @@ export default function Employee({
     employees = [], 
     meta = null, 
     filters = {},
-    businessUnits = [] 
+    businessUnits = [],
+    currentUserRole = 'HR'  // Add this prop
 }: { 
     employees?: Employee[], 
     meta?: PageMeta | null,
@@ -89,7 +90,8 @@ export default function Employee({
         page?: number;
         per_page?: number;
     },
-    businessUnits?: Array<{id: number, businessunit_name: string}>
+    businessUnits?: Array<{id: number, businessunit_name: string}>,
+    currentUserRole?: string;
 }) {
     const [loading, setLoading] = useState(true);
     const [employeesData, setEmployeesData] = useState<Employee[]>(employees);
@@ -381,6 +383,8 @@ export default function Employee({
         openEditModal(employee);
     };
 
+    const isAdmin = currentUserRole === 'Admin';
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Employee List" />
@@ -450,17 +454,19 @@ export default function Employee({
                                     <CreditCard className="h-4 w-4 mr-1.5" />
                                     Export ID Cards
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={openBulkDeleteModal}
-                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-700 dark:hover:bg-red-800"
-                                >
-                                    <span className="text-sm dark:text-gray-300 mr-1.5">
-                                        {selectedEmployeeCount}
-                                    </span>
-                                    <Trash className="h-4 w-4 mr-1.5" />
-                                    Delete Selected
-                                </button>
+                                {isAdmin && (
+                                    <button
+                                        type="button"
+                                        onClick={openBulkDeleteModal}
+                                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-700 dark:hover:bg-red-800"
+                                    >
+                                        <span className="text-sm dark:text-gray-300 mr-1.5">
+                                            {selectedEmployeeCount}
+                                        </span>
+                                        <Trash className="h-4 w-4 mr-1.5" />
+                                        Delete Selected
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>
@@ -609,13 +615,15 @@ export default function Employee({
                                                 <Edit className="h-4 w-4" />
                                                 <span className="sr-only">Edit {employee.employee_firstname}</span>
                                             </button>
-                                            <button 
-                                                className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                                                onClick={() => openDeleteModal(employee)}
-                                            >
-                                                <Trash className="h-4 w-4" />
-                                                <span className="sr-only">Delete {employee.employee_firstname}</span>
-                                            </button>
+                                            {isAdmin && (
+                                                <button 
+                                                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                                    onClick={() => openDeleteModal(employee)}
+                                                >
+                                                    <Trash className="h-4 w-4" />
+                                                    <span className="sr-only">Delete {employee.employee_firstname}</span>
+                                                </button>
+                                            )}
                                             <button 
                                                 className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
                                                 onClick={() => router.visit(route('employee.id-preview', employee.uuid))}
@@ -668,23 +676,27 @@ export default function Employee({
             />
 
             {/* Replace with reusable EmployeeDeleteModal component */}
-            <EmployeeDeleteModal
-                isOpen={deleteModalOpen}
-                onClose={closeDeleteModal}
-                employee={employeeToDelete}
-                onSuccess={handleDeleteSuccess}
-                routeName="employee.destroy"
-            />
+            {isAdmin && (
+                <EmployeeDeleteModal
+                    isOpen={deleteModalOpen}
+                    onClose={closeDeleteModal}
+                    employee={employeeToDelete}
+                    onSuccess={handleDeleteSuccess}
+                    routeName="employee.destroy"
+                />
+            )}
 
             {/* Replace with reusable EmployeeBulkDeleteModal component */}
-            <EmployeeBulkDeleteModal
-                isOpen={bulkDeleteModalOpen}
-                onClose={closeBulkDeleteModal}
-                selectedCount={selectedEmployeeCount}
-                selectedUuids={getSelectedEmployeeUuids()}
-                onSuccess={handleBulkDeleteSuccess}
-                routeName="employee.bulk-destroy"
-            />
+            {isAdmin && (
+                <EmployeeBulkDeleteModal
+                    isOpen={bulkDeleteModalOpen}
+                    onClose={closeBulkDeleteModal}
+                    selectedCount={selectedEmployeeCount}
+                    selectedUuids={getSelectedEmployeeUuids()}
+                    onSuccess={handleBulkDeleteSuccess}
+                    routeName="employee.bulk-destroy"
+                />
+            )}
 
             {successMessage && (
                 <div className="fixed top-4 right-4 z-50 max-w-md">

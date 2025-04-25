@@ -32,7 +32,8 @@ interface PageMeta {
 export default function BusinessUnitIndex({ 
     businessUnits = [], 
     meta = null, 
-    filters = {}
+    filters = {},
+    currentUserRole = 'HR',  // Add this prop
 }: { 
     businessUnits?: BusinessUnit[], 
     meta?: PageMeta | null,
@@ -40,7 +41,8 @@ export default function BusinessUnitIndex({
         search?: string;
         page?: number;
         per_page?: number;
-    }
+    },
+    currentUserRole?: string;
 }) {
     // Add debugging logs to see what data is coming in
     console.log('BusinessUnitIndex rendered with data:', { businessUnits, meta, filters });
@@ -408,6 +410,8 @@ export default function BusinessUnitIndex({
         });
     };
 
+    const isAdmin = currentUserRole === 'Admin';
+    
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Business Units" />
@@ -449,7 +453,7 @@ export default function BusinessUnitIndex({
                     </div>
 
                     <div className="ml-auto">
-                        {selectedBusinessUnitCount >= 2 && (
+                        {selectedBusinessUnitCount >= 2 && isAdmin && (
                             <div className="flex items-center space-x-2">
                                 <button
                                     type="button"
@@ -528,13 +532,15 @@ export default function BusinessUnitIndex({
                                                 <Edit className="h-4 w-4" />
                                                 <span className="sr-only">Edit {businessUnit.businessunit_name}</span>
                                             </button>
-                                            <button 
-                                                className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                                                onClick={() => openDeleteModal(businessUnit)}
-                                            >
-                                                <Trash className="h-4 w-4" />
-                                                <span className="sr-only">Delete {businessUnit.businessunit_name}</span>
-                                            </button>
+                                            {isAdmin && (
+                                                <button 
+                                                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                                    onClick={() => openDeleteModal(businessUnit)}
+                                                >
+                                                    <Trash className="h-4 w-4" />
+                                                    <span className="sr-only">Delete {businessUnit.businessunit_name}</span>
+                                                </button>
+                                            )}
                                         </div>
                                     </Table.Cell>
                                 </Table.Row>
