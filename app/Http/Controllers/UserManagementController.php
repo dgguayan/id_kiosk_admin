@@ -6,19 +6,16 @@ use App\Models\User;
 use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
-use Spatie\Activitylog\Facades\LogActivity;
 
 class UserManagementController extends Controller
 {
     public function __construct()
     {
-        // Authentication is handled at the route level
-        // No need for middleware here
+        // $this->middleware('auth');
     }
 
     /**
@@ -29,7 +26,7 @@ class UserManagementController extends Controller
      */
     public function index(Request $request)
     {
-        // Check user permissions - any logged in user with Admin or HR role can access
+        // Check if user is Admin or HR
         if (!in_array(Auth::user()->role, ['Admin', 'HR'])) {
             abort(403, 'Unauthorized action.');
         }
@@ -67,7 +64,7 @@ class UserManagementController extends Controller
         // Get paginated results
         $users = $query->paginate($perPage, ['*'], 'page', $page);
 
-        // Get current user's role
+        // Get current user's role for permission control in frontend
         $currentUserRole = Auth::user()->role;
 
         return Inertia::render('UserManagement/Index', [
@@ -96,7 +93,7 @@ class UserManagementController extends Controller
      */
     public function store(Request $request)
     {
-        // Check user permissions - any logged in user with Admin or HR role can create
+        // Check user permissions - both Admin and HR can create
         if (!in_array(Auth::user()->role, ['Admin', 'HR'])) {
             abort(403, 'Unauthorized action.');
         }
@@ -112,11 +109,6 @@ class UserManagementController extends Controller
             ],
         ]);
 
-        // Only Admins can create Admin users
-        if ($request->input('role') === 'Admin' && Auth::user()->role !== 'Admin') {
-            abort(403, 'Only administrators can create admin users.');
-        }
-
         // Create the user
         $user = User::create([
             'name' => $request->name,
@@ -125,14 +117,15 @@ class UserManagementController extends Controller
             'role' => $request->role,
         ]);
 
+        // Log activity for audit trail
         ActivityLogService::log(
             'user_created',
-            "User {$user->name} was created",
+            "User {$user->name} was created", 
             'App\Models\User',
             $user->id,
             ['name' => $user->name, 'email' => $user->email, 'role' => $user->role]
         );
-        
+
         return redirect()->back()->with('success', 'User created successfully.');
     }
 
@@ -145,7 +138,7 @@ class UserManagementController extends Controller
      */
     public function update(Request $request, User $user)
     {
-        // Check user permissions - any logged in user with Admin or HR role can update
+        // Check user permissions - both Admin and HR can update
         if (!in_array(Auth::user()->role, ['Admin', 'HR'])) {
             abort(403, 'Unauthorized action.');
         }
@@ -172,19 +165,10 @@ class UserManagementController extends Controller
 
         $validatedData = $request->validate($rules);
 
-        // Only Admins can change roles
-        if (Auth::user()->role !== 'Admin' && $user->role !== $request->input('role')) {
-            abort(403, 'Only administrators can change user roles.');
-        }
-
         // Update user data
         $user->name = $validatedData['name'];
         $user->email = $validatedData['email'];
-        
-        // Only Admins can update role
-        if (Auth::user()->role === 'Admin') {
-            $user->role = $validatedData['role'];
-        }
+        $user->role = $validatedData['role'];
 
         // Update password if provided
         if ($request->filled('password')) {
@@ -192,7 +176,8 @@ class UserManagementController extends Controller
         }
 
         $user->save();
-        // Log activity
+
+        // Log activity for audit trail
         ActivityLogService::log(
             'user_updated',
             "User {$user->name} was updated", 
@@ -212,7 +197,7 @@ class UserManagementController extends Controller
      */
     public function destroy(User $user)
     {
-        // Only Admin users can delete
+        // Only Admin users can delete - THIS IS THE KEY PERMISSION DIFFERENCE
         if (Auth::user()->role !== 'Admin') {
             abort(403, 'Only administrators can delete users.');
         }
@@ -221,13 +206,14 @@ class UserManagementController extends Controller
         if (Auth::id() === $user->id) {
             return redirect()->back()->with('error', 'You cannot delete your own account.');
         }
-        // Log activity before deleting
+
+        // Log activity before deleting for audit trail
         ActivityLogService::log(
             'user_deleted',
             "User {$user->name} was deleted",
             'App\Models\User',
             $user->id,
-            ['name' => $user->name, 'email' => $user->email, 'role' => $user->role]
+            ['name' => $user->name]
         );
 
         // Delete the user
