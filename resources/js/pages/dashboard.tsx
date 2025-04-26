@@ -4,6 +4,7 @@ import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
+import { ChartArea } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -13,9 +14,9 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const staticDashboardData = {
-    inactiveEmployees: 25,
+    totalEmployees: 25,
     pendingIDs: 25,
-    totalWithID: 0,
+    TotalIDCounter: 0,
     businessUnits: [
         {
             id: 1,
@@ -60,7 +61,6 @@ const staticDashboardData = {
     ]
 };
 
-
 export default function Dashboard() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -80,19 +80,19 @@ export default function Dashboard() {
                 {/* Summary statistics cards */}
                 <div className="grid auto-rows-min gap-4 md:grid-cols-3">
                     <StatCard 
-                        title="Inactive Employees" 
-                        value={staticDashboardData.inactiveEmployees} 
-                        iconType="inactive"
-                    />
-                    <StatCard 
-                        title="Pending Existing IDs" 
+                        title="Pending IDs" 
                         value={staticDashboardData.pendingIDs} 
                         iconType="pending"
                     />
                     <StatCard 
-                        title="Total Employees with ID" 
-                        value={staticDashboardData.totalWithID} 
+                        title="Total Employees" 
+                        value={staticDashboardData.totalEmployees} 
                         iconType="total"
+                    />
+                    <StatCard 
+                        title="Total ID Processed" 
+                        value={staticDashboardData.TotalIDCounter} 
+                        iconType="processed"
                     />
                 </div>
 
