@@ -45,7 +45,7 @@ class ActivityLogController extends Controller
         
         $logs = $query
             ->orderBy($sortField, $sortDirection)
-            ->paginate(15)
+            ->paginate(10)
             ->withQueryString();
         
         // Get unique users for filter dropdown
@@ -63,7 +63,15 @@ class ActivityLogController extends Controller
             ->pluck('action');
 
         return Inertia::render('ActivityLog/Index', [
-            'logs' => $logs,
+            'logs' => [
+                'data' => $logs->items(),
+                'meta' => [
+                    'current_page' => $logs->currentPage(),
+                    'last_page' => $logs->lastPage(),
+                    'total' => $logs->total(),
+                    'per_page' => $logs->perPage(),
+                ],
+            ],
             'users' => $users,
             'actionTypes' => $actions,
             'filters' => [
