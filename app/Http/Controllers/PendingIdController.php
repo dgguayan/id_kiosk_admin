@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BusinessUnit;
 use App\Models\Employee;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth; // Add this import
 use Inertia\Inertia;
 
 class PendingIdController extends Controller
@@ -61,6 +62,9 @@ class PendingIdController extends Controller
         $businessUnits = BusinessUnit::orderBy('businessunit_name')
             ->get(['businessunit_id AS id', 'businessunit_name']);
         
+        // Get current user's role for permission control
+        $currentUserRole = Auth::user()->role;
+        
         return Inertia::render('PendingId/Index', [
             'employees' => $transformedEmployees->all(),
             'meta' => [
@@ -78,6 +82,7 @@ class PendingIdController extends Controller
                 'sort_direction' => $sortDirection,
             ],
             'businessUnits' => $businessUnits, // Pass business units for the dropdown
+            'currentUserRole' => $currentUserRole, // Pass the current user role
         ]);
     }
 
@@ -126,8 +131,16 @@ class PendingIdController extends Controller
      */
     public function destroy(string $id)
     {
-        // Delegate to the EmployeeController for deletion
-        return app(EmployeeController::class)->destroy($id);
+        try {
+            $employee = Employee::findOrFail($id);
+            $employee->delete();
+            
+            return redirect()->route('pending-id.index')
+                ->with('success', 'Employee deleted successfully');
+        } catch (\Exception $e) {
+            return redirect()->route('pending-id.index')
+                ->with('error', 'Failed to delete employee: ' . $e->getMessage());
+        }
     }
     
     /**
@@ -135,7 +148,15 @@ class PendingIdController extends Controller
      */
     public function bulkDestroy(Request $request)
     {
-        // Delegate to the EmployeeController for bulk deletion
-        return app(EmployeeController::class)->bulkDestroy($request);
+        try {
+            $uuids = $request->input('uuids', []);
+            $deletedCount = Employee::whereIn('uuid', $uuids)->delete();
+            
+            return redirect()->route('pending-id.index')
+                ->with('success', $deletedCount . ' employees deleted successfully');
+        } catch (\Exception $e) {
+            return redirect()->route('pending-id.index')
+                ->with('error', 'Failed to delete employees: ' . $e->getMessage());
+        }
     }
 }

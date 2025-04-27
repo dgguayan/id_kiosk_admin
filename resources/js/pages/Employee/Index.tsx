@@ -80,7 +80,7 @@ export default function Employee({
     meta = null, 
     filters = {},
     businessUnits = [],
-    currentUserRole = 'HR'  // Add this prop
+    currentUserRole = ''  // Add this prop
 }: { 
     employees?: Employee[], 
     meta?: PageMeta | null,

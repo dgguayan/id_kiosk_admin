@@ -12,6 +12,7 @@ import EmployeeEditModal from '@/components/modals/EmployeeEditModal';
 import EmployeeAddModal from '@/components/modals/EmployeeAddModal';
 import EmployeeDeleteModal from '@/components/modals/EmployeeDeleteModal';
 import EmployeeBulkDeleteModal from '@/components/modals/EmployeeBulkDeleteModal';
+import { CheckCircle, XCircle } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -59,7 +60,7 @@ export default function PendingId({
     meta = null, 
     filters = {},
     businessUnits = [],
-    currentUserRole = 'HR'  // Add this prop
+    currentUserRole = ''  // Add this prop
 }: { 
     employees?: Employee[], 
     meta?: PageMeta | null,
@@ -294,6 +295,7 @@ export default function PendingId({
         }, 200);
     };
 
+    // Update the handleDeleteSuccess function to match the Employee Index implementation
     const handleDeleteSuccess = () => {
         if (employeeToDelete) {
             setSuccessMessage(`Successfully deleted ${employeeToDelete.employee_firstname} ${employeeToDelete.employee_lastname}`);
@@ -705,15 +707,18 @@ export default function PendingId({
                 onSuccess={handleAddSuccess}
             />
 
+            {/* Replace with reusable EmployeeDeleteModal component */}
             {isAdmin && (
                 <EmployeeDeleteModal
                     isOpen={deleteModalOpen}
                     onClose={closeDeleteModal}
                     employee={employeeToDelete}
                     onSuccess={handleDeleteSuccess}
+                    routeName="pending-id.destroy"
                 />
             )}
 
+            {/* Replace with reusable EmployeeBulkDeleteModal component */}
             {isAdmin && (
                 <EmployeeBulkDeleteModal
                     isOpen={bulkDeleteModalOpen}
@@ -721,18 +726,16 @@ export default function PendingId({
                     selectedCount={selectedEmployeeCount}
                     selectedUuids={getSelectedEmployeeUuids()}
                     onSuccess={handleBulkDeleteSuccess}
+                    routeName="pending-id.bulk-destroy"
                 />
             )}
 
-            {/* Success message toast */}
             {successMessage && (
                 <div className="fixed top-4 right-4 z-50 max-w-md">
                     <div className="rounded-md bg-green-50 p-4 shadow-lg dark:bg-green-900">
                         <div className="flex">
                             <div className="flex-shrink-0">
-                                <svg className="h-5 w-5 text-green-400 dark:text-green-300" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                </svg>
+                                <CheckCircle className="h-5 w-5 text-green-400 dark:text-green-300" aria-hidden="true" />
                             </div>
                             <div className="ml-3">
                                 <p className="text-sm font-medium text-green-800 dark:text-green-200">{successMessage}</p>
@@ -745,9 +748,7 @@ export default function PendingId({
                                         onClick={() => setSuccessMessage(null)}
                                     >
                                         <span className="sr-only">Dismiss</span>
-                                        <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                        </svg>
+                                        <XCircle className="h-5 w-5" aria-hidden="true" />
                                     </button>
                                 </div>
                             </div>
@@ -755,6 +756,7 @@ export default function PendingId({
                     </div>
                 </div>
             )}
+
         </AppLayout>
     );
 }
