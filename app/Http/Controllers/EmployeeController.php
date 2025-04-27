@@ -71,6 +71,9 @@ class EmployeeController extends Controller
         $businessUnits = BusinessUnit::orderBy('businessunit_name')
             ->get(['businessunit_id AS id', 'businessunit_name']);
         
+        // Get current user's role for permission control
+        $currentUserRole = Auth::user()->role;
+        
         return Inertia::render('Employee/Index', [
             'employees' => $transformedEmployees->all(),
             'meta' => [
@@ -88,6 +91,7 @@ class EmployeeController extends Controller
                 'sort_direction' => $sortDirection,
             ],
             'businessUnits' => $businessUnits, // Pass business units for the dropdown
+            'currentUserRole' => $currentUserRole, // Pass the current user role
         ]);
     }
 
@@ -429,8 +433,9 @@ class EmployeeController extends Controller
      */
     public function destroy(string $id)
     {
+        // Check if user has permission to delete
         if (Auth::user()->role !== 'Admin') {
-            abort(403, 'Only administrators can delete users.');
+            abort(403, 'Only administrators can delete employees.');
         }
         
         try {
@@ -457,12 +462,13 @@ class EmployeeController extends Controller
     }
 
     /**
-     * Bulk delete of employees
+     * Bulk delete employees.
      */
     public function bulkDestroy(Request $request)
     {
+        // Check if user has permission to delete
         if (Auth::user()->role !== 'Admin') {
-            abort(403, 'Only administrators can delete users.');
+            abort(403, 'Only administrators can delete employees.');
         }
         
         $validated = $request->validate([

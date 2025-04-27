@@ -33,7 +33,7 @@ export default function BusinessUnitIndex({
     businessUnits = [], 
     meta = null, 
     filters = {},
-    currentUserRole = 'HR',  // Add this prop
+    currentUserRole = ''  // Add a default value here
 }: { 
     businessUnits?: BusinessUnit[], 
     meta?: PageMeta | null,
@@ -46,6 +46,9 @@ export default function BusinessUnitIndex({
 }) {
     // Add debugging logs to see what data is coming in
     console.log('BusinessUnitIndex rendered with data:', { businessUnits, meta, filters });
+    
+    // Define isAdmin based on currentUserRole
+    const isAdmin = currentUserRole === 'Admin'; // Match the exact capitalization used in UserManagement
     
     const [loading, setLoading] = useState(true);
     const [businessUnitsData, setBusinessUnitsData] = useState<BusinessUnit[]>(businessUnits);
@@ -409,8 +412,6 @@ export default function BusinessUnitIndex({
             }
         });
     };
-
-    const isAdmin = currentUserRole === 'Admin';
     
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -468,6 +469,8 @@ export default function BusinessUnitIndex({
                                 </button>
                             </div>
                         )}
+
+
                     </div>
                 </div>
 

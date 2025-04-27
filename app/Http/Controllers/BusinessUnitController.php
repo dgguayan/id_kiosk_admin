@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\BusinessUnit;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use App\Models\BusinessUnit;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
-use Inertia\Inertia;
 
 class BusinessUnitController extends Controller
 {
@@ -15,26 +15,24 @@ class BusinessUnitController extends Controller
      */
     public function index(Request $request)
     {
-        $search = $request->input('search');
-        $sortField = $request->input('sort_by', 'businessunit_name');
-        $sortDirection = $request->input('sort_direction', 'asc');
-        
         $query = BusinessUnit::query();
         
-        // Apply search if provided
-        if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('businessunit_name', 'like', "%{$search}%")
-                ->orWhere('businessunit_id', 'like', "%{$search}%");
-            });
+        // Apply search filter if provided
+        if ($request->has('search') && !empty($request->search)) {
+            $query->where('businessunit_name', 'like', '%' . $request->search . '%');
         }
+
+        // Apply sorting
+        $sortBy = $request->get('sort_by', 'businessunit_name');
+        $sortDirection = $request->get('sort_direction', 'asc');
+        $query->orderBy($sortBy, $sortDirection);
         
-        $businessUnits = $query
-            ->orderBy($sortField, $sortDirection)
-            ->paginate(10)
-            ->withQueryString();
+        // Paginate the results
+        $businessUnits = $query->paginate($request->get('per_page', 10));
         
-        // Return with meta information properly formatted
+        // Get current user's role for permission control
+        $currentUserRole = Auth::user()->role;
+        
         return Inertia::render('BusinessUnit/Index', [
             'businessUnits' => $businessUnits->items(),
             'meta' => [
@@ -43,22 +41,9 @@ class BusinessUnitController extends Controller
                 'total' => $businessUnits->total(),
                 'per_page' => $businessUnits->perPage(),
             ],
-            'filters' => [
-                'search' => $search,
-                'page' => $request->input('page', 1),
-                'per_page' => 10,
-                'sort_by' => $sortField,
-                'sort_direction' => $sortDirection,
-            ],
+            'filters' => $request->only(['search', 'page', 'per_page']),
+            'currentUserRole' => $currentUserRole, // Pass the role with the same capitalization as other controllers
         ]);
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
     }
 
     /**
@@ -67,93 +52,81 @@ class BusinessUnitController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'businessunit_name' => 'required|string|max:255|unique:business_units',
+            'businessunit_name' => 'required|string|max:255|unique:business_units,businessunit_name',
         ]);
-
-        if ($validator->fails()) {
-            return back()->withErrors($validator->errors());
-        }
-
-        $businessUnit = new BusinessUnit();
-        $businessUnit->businessunit_name = $request->businessunit_name;
         
-        $businessUnit->save(['timestamps' => true]);
-
-        return redirect()->route('business-unit.index')->with('success', 'Business Unit created successfully.');
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator);
+        }
+        
+        BusinessUnit::create([
+            'businessunit_name' => $request->businessunit_name,
+        ]);
+        
+        return redirect()->route('business-unit.index')->with('success', 'Business unit created successfully.');
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, BusinessUnit $businessUnit)
     {
-        $businessUnit = BusinessUnit::findOrFail($id);
+        // Check if user has permission to update
+        if (Auth::user()->role !== 'Admin') {
+            return redirect()->back()->with('error', 'You do not have permission to perform this action.');
+        }
         
         $validator = Validator::make($request->all(), [
-            'businessunit_name' => 'required|string|max:255|unique:business_units,businessunit_name,' . $id . ',businessunit_id',
+            'businessunit_name' => 'required|string|max:255|unique:business_units,businessunit_name,' . $businessUnit->businessunit_id . ',businessunit_id',
         ]);
-
+        
         if ($validator->fails()) {
-            return back()->withErrors($validator->errors());
+            return redirect()->back()->withErrors($validator);
         }
-
-        $businessUnit->businessunit_name = $request->businessunit_name;
-        $businessUnit->save();
-
-        return redirect()->route('business-unit.index')->with('success', 'Business Unit updated successfully.');
+        
+        $businessUnit->update([
+            'businessunit_name' => $request->businessunit_name,
+        ]);
+        
+        return redirect()->route('business-unit.index')->with('success', 'Business unit updated successfully.');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(BusinessUnit $businessUnit)
     {
+        // Check if user has permission to delete
         if (Auth::user()->role !== 'Admin') {
-            abort(403, 'Only administrators can delete users.');
+            return redirect()->back()->with('error', 'You do not have permission to perform this action.');
         }
         
-        $businessUnit = BusinessUnit::findOrFail($id);
         $businessUnit->delete();
-
-        return redirect()->route('business-unit.index')->with('success', 'Business Unit deleted successfully.');
+        
+        return redirect()->route('business-unit.index')->with('success', 'Business unit deleted successfully.');
     }
 
     /**
-     * Bulk delete multiple business units
+     * Bulk delete business units
      */
     public function bulkDestroy(Request $request)
     {
+        // Check if user has permission to delete
         if (Auth::user()->role !== 'Admin') {
-            abort(403, 'Only administrators can delete users.');
+            return redirect()->back()->with('error', 'You do not have permission to perform this action.');
         }
         
         $validator = Validator::make($request->all(), [
             'ids' => 'required|array',
-            'ids.*' => 'exists:business_units,businessunit_id',
+            'ids.*' => 'exists:business_units,businessunit_id'
         ]);
-
+        
         if ($validator->fails()) {
-            return back()->withErrors($validator->errors());
+            return redirect()->back()->withErrors($validator);
         }
-
+        
         BusinessUnit::whereIn('businessunit_id', $request->ids)->delete();
-
-        return redirect()->route('business-unit.index')->with('success', 'Business Units deleted successfully.');
+        
+        return redirect()->route('business-unit.index')->with('success', 'Business units deleted successfully.');
     }
 }

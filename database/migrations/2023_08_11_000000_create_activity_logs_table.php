@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('action');
             $table->text('description')->nullable();
             $table->string('model_type')->nullable();
-            $table->string('model_id')->nullable();
+            $table->longText('model_id')->nullable();
             $table->string('ip_address')->nullable();
             $table->text('user_agent')->nullable();
             $table->json('properties')->nullable();
