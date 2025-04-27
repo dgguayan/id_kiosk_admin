@@ -81,6 +81,7 @@ export default function ActivityLogIndex({
     const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
     useEffect(() => {
+        console.log("Pagination data:", logs?.meta);
         setLoading(false);
         if (logs.meta) {
             setCurrentPage(logs.meta.current_page);
@@ -412,7 +413,7 @@ export default function ActivityLogIndex({
                         </Table.Body>
                     </Table.Root>
                     
-                    {logs.meta && (
+                    {logs.meta && logs.meta.last_page > 1 && (
                         <Pagination 
                             currentPage={currentPage}
                             lastPage={lastPage}
