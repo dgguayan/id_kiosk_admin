@@ -3,7 +3,7 @@ import StatCard from '@/components/Dashboard/statcard';
 import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { ChartArea } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -13,16 +13,17 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+// Fallback static data in case API data is not available
 const staticDashboardData = {
-    totalEmployees: 25,
-    pendingIDs: 25,
+    totalEmployees: 0,
+    pendingIDs: 0,
     TotalIDCounter: 0,
     businessUnits: [
         {
             id: 1,
             code: 'MMHI',
             name: 'Holdings Incorporated',
-            totalEmployees: 8,
+            totalEmployees: 0,
             idCompletionPercentage: 0,
             logoUrl: '/images/logos/mmhi-logo.png'
         },
@@ -30,7 +31,7 @@ const staticDashboardData = {
             id: 2,
             code: 'MMEI',
             name: 'Enterprises Incorporated',
-            totalEmployees: 13,
+            totalEmployees: 0,
             idCompletionPercentage: 0,
             logoUrl: '/images/logos/mmei-logo.png'
         },
@@ -38,7 +39,7 @@ const staticDashboardData = {
             id: 3,
             code: 'MMFI',
             name: 'Farms Incorporated',
-            totalEmployees: 14,
+            totalEmployees: 0,
             idCompletionPercentage: 0,
             logoUrl: '/images/logos/mmfi-logo.png'
         },
@@ -46,7 +47,7 @@ const staticDashboardData = {
             id: 4,
             code: 'MMHC',
             name: 'Hospitality Corporation',
-            totalEmployees: 4,
+            totalEmployees: 0,
             idCompletionPercentage: 0,
             logoUrl: '/images/logos/mmhc-logo.png'
         },
@@ -54,7 +55,7 @@ const staticDashboardData = {
             id: 5,
             code: 'MMDC',
             name: 'Development Corporation',
-            totalEmployees: 11,
+            totalEmployees: 0,
             idCompletionPercentage: 0,
             logoUrl: '/images/logos/mmdc-logo.png'
         }
@@ -62,6 +63,17 @@ const staticDashboardData = {
 };
 
 export default function Dashboard() {
+    // Get dashboard data from backend
+    const { dashboardData = staticDashboardData } = usePage().props as any;
+    
+    // Use data from backend, or fallback to static data if not available
+    const {
+        totalEmployees, 
+        pendingIDs, 
+        TotalIDCounter, 
+        businessUnits
+    } = dashboardData;
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Employee ID Dashboard" />
@@ -81,17 +93,17 @@ export default function Dashboard() {
                 <div className="grid auto-rows-min gap-4 md:grid-cols-3">
                     <StatCard 
                         title="Pending IDs" 
-                        value={staticDashboardData.pendingIDs} 
+                        value={pendingIDs} 
                         iconType="pending"
                     />
                     <StatCard 
                         title="Total Employees" 
-                        value={staticDashboardData.totalEmployees} 
+                        value={totalEmployees} 
                         iconType="total"
                     />
                     <StatCard 
                         title="Total ID Processed" 
-                        value={staticDashboardData.TotalIDCounter} 
+                        value={TotalIDCounter} 
                         iconType="processed"
                     />
                 </div>
@@ -102,9 +114,9 @@ export default function Dashboard() {
                     <h2 className="text-xl font-semibold mb-4">M. Montesclaros Business Units</h2>
                     
                     {/* Main HQ Card - Larger */}
-                    {staticDashboardData.businessUnits
-                        .filter(unit => unit.code === 'MMHI')
-                        .map(unit => (
+                    {businessUnits
+                        .filter((unit: { code: string; }) => unit.code === 'MMHI')
+                        .map((unit: typeof businessUnits[0]) => (
                             <BusinessUnitCard 
                                 key={unit.id}
                                 unit={unit}
@@ -115,9 +127,9 @@ export default function Dashboard() {
 
                     {/* Other Business Units */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-                        {staticDashboardData.businessUnits
-                            .filter(unit => unit.code !== 'MMHI')
-                            .map(unit => (
+                        {businessUnits
+                            .filter((unit: { code: string; }) => unit.code !== 'MMHI')
+                            .map((unit: typeof businessUnits[0]) => (
                                 <BusinessUnitCard 
                                     key={unit.id}
                                     unit={unit}
