@@ -375,7 +375,7 @@ export default function IdTemplateLayout({
         } else if (element === 'emp_idno') {
             sampleText = "IDNO";
         } else if (element === 'emp_sig') {
-            sampleText = "Signature";
+            sampleText = "Employee Signature";
         } else if (element === 'emp_add') {
             sampleText = "123 Sample Street, City";
         } else if (element === 'emp_bday') {
@@ -785,7 +785,7 @@ export default function IdTemplateLayout({
         } else if (element === 'emp_idno') {
             sampleText = "IDNO";
         } else if (element === 'emp_sig') {
-            sampleText = "Signature";
+            sampleText = "Employee Signature";
         } else if (element === 'emp_add') {
             sampleText = "123 Sample Street, City";
         } else if (element === 'emp_bday') {
