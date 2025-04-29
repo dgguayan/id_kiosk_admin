@@ -35,8 +35,6 @@ Route::get('/employee/{id}/id-preview', [EmployeeController::class, 'idPreview']
 // Add the bulk ID card preview route
 Route::post('/employee/bulk-id-preview', [EmployeeController::class, 'bulkIdPreview'])->name('employee.bulk-id-preview')->middleware('auth');
 Route::get('/employee/placeholder-image', [EmployeeController::class, 'placeholderImage'])->name('employee.placeholder-image');
-Route::post('/employee/{uuid}/update-id-status', [EmployeeController::class, 'updateIdStatus'])
-    ->name('employee.update-id-status');
 
 //business unit
 Route::resource('business-unit', BusinessUnitController::class)->middleware('auth');

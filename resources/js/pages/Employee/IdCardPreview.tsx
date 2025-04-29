@@ -5,7 +5,6 @@ import { Head, router } from '@inertiajs/react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { ArrowLeft, Download, AlertCircle } from 'lucide-react';
-import axios from 'axios';
 
 interface IdCardPreviewProps {
     employee: {
@@ -726,58 +725,12 @@ const IdCardPreview: React.FC<IdCardPreviewProps> = ({ employee, templateImages,
             const zipContent = await zip.generateAsync({ type: "blob" });
             saveAs(zipContent, zipFileName);
 
-            // After successful export, update the ID status and counter
-            try {
-                await updateIdStatus(employee.uuid);
-                alert(`ID Card exported successfully!\nFiles will be downloaded as ${zipFileName}\nEmployee ID status has been updated to 'printed'.`);
-            } catch (updateError) {
-                console.error("Error updating ID status:", updateError);
-                alert(`ID Card exported successfully, but failed to update ID status. Please contact an administrator.`);
-            }
+            alert(`ID Card exported successfully!\nFiles will be downloaded as ${zipFileName}`);
         } catch (error) {
             console.error("Error exporting ID card:", error);
             setErrorMessage(`Error exporting ID card: ${error instanceof Error ? error.message : 'Unknown error'}`);
         } finally {
             setIsExporting(false);
-        }
-    };
-
-    // Add this function to handle the API call
-    const updateIdStatus = async (employeeUuid: number): Promise<void> => {
-        try {
-            console.log(`Attempting to update ID status for employee UUID: ${employeeUuid}`);
-            
-            const response = await axios.post(route('employee.update-id-status', { uuid: employeeUuid }));
-            
-            console.log('ID status update response:', response);
-            
-            if (!response.data.success) {
-                throw new Error(response.data.message || 'Failed to update ID status');
-            }
-            
-            return response.data;
-        } catch (error) {
-            // Enhanced error logging with more details
-            console.error("Error details:", error);
-            
-            if (axios.isAxiosError(error)) {
-                if (error.response) {
-                    console.error("Response data:", error.response.data);
-                    console.error("Response status:", error.response.status);
-                    
-                    // Include specific error details in the thrown error message
-                    const errorDetails = error.response.data.message || JSON.stringify(error.response.data);
-                    throw new Error(`Server error: ${errorDetails}`);
-                } else if (error.request) {
-                    // Request made but no response received
-                    throw new Error('No response received from server. Check your network connection.');
-                } else {
-                    // Something else caused the error
-                    throw new Error(`Request setup error: ${error.message}`);
-                }
-            }
-            
-            throw error; // Re-throw if not an axios error
         }
     };
 

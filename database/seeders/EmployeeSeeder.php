@@ -37,15 +37,15 @@ class EmployeeSeeder extends Seeder
             'Content Writer'
         ];
 
-        for ($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 100; $i++) {
             $firstname = $faker->firstName;
             $lastname = $faker->lastName;
             $middlename = $faker->optional(0.7)->lastName;
             $nameExtension = $faker->optional(0.2)->randomElement(['Jr.', 'Sr.', 'II', 'III', 'IV']);
             
             // Generate a realistic ID number (e.g., EMP-2025-0001)
-            $employeeIdCounter = 1;
-            $idNo = 'EMP-' . date('Y') . '-' . str_pad($i + 1, 4, '0', STR_PAD_LEFT);
+            $employeeIdCounter = str_pad($i + 1, 4, '0', STR_PAD_LEFT);
+            $idNo = 'EMP-' . date('Y') . '-' . $employeeIdCounter;
             
             // Random date in the past 5 years
             $dateHired = $faker->dateTimeBetween('-5 years', 'now')->format('Y-m-d');
