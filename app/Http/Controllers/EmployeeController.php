@@ -982,6 +982,22 @@ class EmployeeController extends Controller
             
             $employee->save();
             
+            // Log the activity of exporting the ID card
+            $fullName = $employee->employee_firstname . ' ' . $employee->employee_lastname;
+            ActivityLogService::log(
+                'employee_id_exported',
+                "ID Card for employee {$fullName} was exported",
+                'App\Models\Employee',
+                $employee->id,
+                [
+                    'employee_id' => $employee->id_no, 
+                    'name' => $fullName,
+                    'counter' => $employee->employee_id_counter,
+                    'position' => $employee->position,
+                    'export_date' => now()->toDateTimeString()
+                ]
+            );
+            
             DB::commit();
             
             return response()->json([

@@ -959,7 +959,7 @@ const BulkIdCardPreview: React.FC<BulkIdCardPreviewProps> = ({
         }
     };
     
-    // Handle bulk export of ID cards
+    // Function to handle bulk export of ID cards - update the CSV format
     const handleBulkExport = async () => {
         const selectedUuids = Object.entries(selectedEmployees)
             .filter(([_, isSelected]) => isSelected)
@@ -1010,8 +1010,8 @@ const BulkIdCardPreview: React.FC<BulkIdCardPreviewProps> = ({
                 });
             };
             
-            // Create a master CSV file with all IDs
-            let masterCsvContent = 'EMPLOYEE_ID,EMPLOYEE_NAME,FRONT_FILE,BACK_FILE,STATUS_UPDATED\n';
+            // Create a master CSV file with only front and back filenames
+            let masterCsvContent = 'FRONT_FILE,BACK_FILE\n';
             
             // Process each selected employee
             for (const uuid of selectedUuids) {
@@ -1046,9 +1046,8 @@ const BulkIdCardPreview: React.FC<BulkIdCardPreviewProps> = ({
                     failedUpdates++;
                 }
                 
-                // Add to master CSV
-                const displayName = `${employee.employee_firstname} ${employee.employee_lastname}`;
-                masterCsvContent += `${employeeId},"${displayName}",${frontFileName},${backFileName},${statusUpdateSuccess ? "Yes" : "No"}\n`;
+                // Add to master CSV - simplified to only include front and back filenames
+                masterCsvContent += `${frontFileName},${backFileName}\n`;
                 
                 setExportProgress(Math.round((completed / totalSelected) * 100));
             }
