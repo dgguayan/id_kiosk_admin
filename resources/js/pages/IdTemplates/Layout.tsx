@@ -284,8 +284,18 @@ export default function IdTemplateLayout({
             width = coordinates.emp_qrcode_width;
             height = coordinates.emp_qrcode_height;
         } else if (element === 'emp_sig') {
-            width = 273;
-            height = 193;
+            width = 270;  // Smaller, more reasonable width
+            height = 190;  // Smaller, more reasonable height
+            
+            // For signature, center around the coordinate
+            return {
+                left: x - width / 2,
+                top: y - height / 2,
+                right: x + width / 2,
+                bottom: y + height / 2,
+                width,
+                height,
+            };
         } else if (element.includes('emergency')) {
             width = 200;
             height = 20;
@@ -340,7 +350,7 @@ export default function IdTemplateLayout({
         // For standard image elements, use the full rectangle
         if (element === 'emp_img' || element === 'emp_qrcode') {
             return x >= bounds.left && x <= bounds.right && 
-                   y >= bounds.top && y <= bounds.bottom;
+                    y >= bounds.top && y <= bounds.bottom;
         }
         
         // For text elements, calculate the actual text width + padding
@@ -400,7 +410,7 @@ export default function IdTemplateLayout({
         const textMetrics = ctx.measureText(sampleText);
         const textWidth = textMetrics.width;
         const horizontalPadding = 20;
-        const adjustedWidth = textWidth + horizontalPadding;
+        let adjustedWidth = textWidth + horizontalPadding;
         
         // Calculate height with padding
         let adjustedHeight = bounds.height;
@@ -418,11 +428,17 @@ export default function IdTemplateLayout({
             actualRight = bounds.left + adjustedWidth;
             actualBottom = bounds.top + adjustedHeight;
         } else if (element === 'emp_sig') {
-            // For signature, use fixed dimensions
-            actualLeft = bounds.left - bounds.width / 2;
-            actualTop = bounds.top - bounds.height / 2;
-            actualRight = bounds.left + bounds.width / 2;
-            actualBottom = bounds.top + bounds.height / 2;
+            // Use same dimensions as in other places
+            const sigWidth = 270;
+            const sigHeight = 190;
+            
+            // Calculate actual bounds for signature element
+            const sigLeft = bounds.left;
+            const sigTop = bounds.top;
+            
+            // Check if point is within signature bounds - return a boolean
+            return x >= sigLeft && x <= sigLeft + sigWidth && 
+                   y >= sigTop && y <= sigTop + sigHeight;
         } else {
             // For centered elements (front side text elements)
             actualLeft = bounds.left + (bounds.width - adjustedWidth) / 2;
@@ -433,7 +449,7 @@ export default function IdTemplateLayout({
         
         // Check if point is within the adjusted bounds
         return x >= actualLeft && x <= actualRight && 
-               y >= actualTop && y <= actualBottom;
+                y >= actualTop && y <= actualBottom;
     };
 
     // Handle mouse down on canvas to start dragging
@@ -666,10 +682,8 @@ export default function IdTemplateLayout({
         const isInBottomLeft = Math.abs(x - imgBounds.left) <= handleSize && Math.abs(y - (imgBounds.top + imgBounds.height)) <= handleSize;
         const isInBottomRight = Math.abs(x - (imgBounds.left + imgBounds.width)) <= handleSize && Math.abs(y - (imgBounds.top + imgBounds.height)) <= handleSize;
         
-        if (isInTopLeft || isInBottomRight) {
+        if (isInTopLeft || isInTopRight || isInBottomLeft || isInBottomRight) {
             canvas.style.cursor = 'nwse-resize';
-        } else if (isInTopRight || isInBottomLeft) {
-            canvas.style.cursor = 'nesw-resize';
         } else {
             // Check if we're over any element
             const elements = Object.keys(elementMeta) as ElementType[];
@@ -841,13 +855,42 @@ export default function IdTemplateLayout({
             
             let adjustedWidth = textWidth + horizontalPadding;
             let adjustedHeight = bounds.height;
-            
+
+            if (element === 'emp_sig') {
+                // Get the bounds from the getElementBounds function
+                const sigWidth = 270;  // Match the width in getElementBounds
+                const sigHeight = 190;  // Match the height in getElementBounds
+                
+                // Use the same bounds for drawing as we do for hit detection
+                adjustedWidth = sigWidth;
+                adjustedHeight = sigHeight;
+                
+                // Calculate centered position (since signature should be centered)
+                const adjustedLeft = bounds.left + (bounds.width - adjustedWidth) / 2;
+                const adjustedTop = bounds.top + (bounds.height - adjustedHeight) / 2;
+                
+                // Draw a rectangle for the signature box with actual dimensions
+                ctx.fillStyle = color;
+                ctx.fillRect(adjustedLeft, adjustedTop, adjustedWidth, adjustedHeight);
+                
+                // Add a signature-like line for visual indication
+                ctx.beginPath();
+                ctx.moveTo(adjustedLeft + 20, adjustedTop + adjustedHeight/2);
+                ctx.bezierCurveTo(
+                    adjustedLeft + adjustedWidth/3, adjustedTop + adjustedHeight/3,
+                    adjustedLeft + adjustedWidth/2, adjustedTop + adjustedHeight/1.5,
+                    adjustedLeft + adjustedWidth - 20, adjustedTop + adjustedHeight/2
+                );
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
             // For multiline text elements, adjust height
-            if (element === 'emp_add' || element === 'emp_emergency_add') {
+            else if (element === 'emp_add' || element === 'emp_emergency_add') {
                 adjustedHeight = 22.5; // Allow for 2 lines of text
             }
             
-            // Calculate adjusted bounds for the colored background
+            // Calculate actual bounds based on element type
             let adjustedLeft, adjustedTop;
             
             if (backTextElements.includes(element)) {
