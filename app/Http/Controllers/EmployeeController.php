@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use App\Services\ActivityLogService;
+use App\Models\Setting;
 
 class EmployeeController extends Controller
 {
@@ -946,5 +947,68 @@ class EmployeeController extends Controller
             'Content-Type' => 'image/png',
             'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
         ]);
+    }
+
+    /**
+     * Update the employee's ID status to printed and increment the employee ID counter
+     *
+     * @param  int  $uuid
+     * @return \Illuminate\Http\Response
+     */
+    public function updateIdStatus($uuid)
+    {
+        try {
+            \Log::info('Updating ID status for employee UUID: ' . $uuid);
+            
+            DB::beginTransaction();
+            
+            // Find the employee
+            $employee = Employee::where('uuid', $uuid)->firstOrFail();
+            \Log::info('Found employee: ' . $employee->id_no);
+            
+            // Update the ID status to 'printed'
+            $employee->id_status = 'printed';
+            
+            // Increment the employee's own employee_id_counter
+            if (isset($employee->employee_id_counter)) {
+                $oldCounter = $employee->employee_id_counter;
+                $employee->employee_id_counter = (int)$employee->employee_id_counter + 1;
+                \Log::info("Updated employee {$employee->id_no}'s counter from {$oldCounter} to {$employee->employee_id_counter}");
+            } else {
+                // If employee_id_counter doesn't exist or is null, set it to 1
+                $employee->employee_id_counter = 1;
+                \Log::info("Set employee {$employee->id_no}'s counter to 1 (was not set previously)");
+            }
+            
+            $employee->save();
+            
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Employee ID status updated and counter incremented successfully',
+                'new_counter' => $employee->employee_id_counter
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error updating employee ID status: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            
+            // Provide more detailed error information
+            $errorMessage = 'Failed to update employee ID status: ';
+            
+            if (strpos($e->getMessage(), 'employee_id_counter') !== false) {
+                $errorMessage .= 'The employee_id_counter column might not exist in the employees table.';
+            } else if (strpos($e->getMessage(), 'No query results') !== false) {
+                $errorMessage .= 'Employee not found with the given UUID.';
+            } else {
+                $errorMessage .= $e->getMessage();
+            }
+            
+            return response()->json([
+                'success' => false,
+                'message' => $errorMessage
+            ], 500);
+        }
     }
 }
