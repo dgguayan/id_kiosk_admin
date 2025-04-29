@@ -5,6 +5,7 @@ import { Head, router } from '@inertiajs/react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { ArrowLeft, Download, AlertCircle, Check, Loader2 } from 'lucide-react';
+import axios from 'axios';
 
 interface EmployeeType {
     uuid: string;
@@ -941,6 +942,23 @@ const BulkIdCardPreview: React.FC<BulkIdCardPreviewProps> = ({
         setSelectedEmployees(newSelection);
     };
 
+    // Alternative implementation using axios
+    const updateEmployeeIdStatus = async (uuid: string): Promise<boolean> => {
+        try {
+            const response = await axios.post(route('employee.update-id-status', { uuid }));
+            
+            if (!response.data.success) {
+                console.error(`Failed to update ID status for employee ${uuid}:`, response.data.message || 'Unknown error');
+                return false;
+            }
+            
+            return true;
+        } catch (error) {
+            console.error(`Error updating status for employee ${uuid}:`, error);
+            return false;
+        }
+    };
+    
     // Handle bulk export of ID cards
     const handleBulkExport = async () => {
         const selectedUuids = Object.entries(selectedEmployees)
@@ -973,6 +991,8 @@ const BulkIdCardPreview: React.FC<BulkIdCardPreviewProps> = ({
             
             const totalSelected = selectedUuids.length;
             let completed = 0;
+            let successfulUpdates = 0;
+            let failedUpdates = 0;
             
             // Update status to show we're beginning the export process
             setLoadingStatus(`Starting export of ${totalSelected} employee ID cards...`);
@@ -991,7 +1011,7 @@ const BulkIdCardPreview: React.FC<BulkIdCardPreviewProps> = ({
             };
             
             // Create a master CSV file with all IDs
-            let masterCsvContent = 'EMPLOYEE_ID,EMPLOYEE_NAME,FRONT_FILE,BACK_FILE\n';
+            let masterCsvContent = 'EMPLOYEE_ID,EMPLOYEE_NAME,FRONT_FILE,BACK_FILE,STATUS_UPDATED\n';
             
             // Process each selected employee
             for (const uuid of selectedUuids) {
@@ -1017,9 +1037,18 @@ const BulkIdCardPreview: React.FC<BulkIdCardPreviewProps> = ({
                 mainFolder.file(`${employeeId}_front.png`, frontBlob, { binary: true });
                 mainFolder.file(`${employeeId}_back.png`, backBlob, { binary: true });
                 
+                // Update employee ID status and counter
+                const statusUpdateSuccess = await updateEmployeeIdStatus(uuid);
+                
+                if (statusUpdateSuccess) {
+                    successfulUpdates++;
+                } else {
+                    failedUpdates++;
+                }
+                
                 // Add to master CSV
                 const displayName = `${employee.employee_firstname} ${employee.employee_lastname}`;
-                masterCsvContent += `${employeeId},"${displayName}",${frontFileName},${backFileName}\n`;
+                masterCsvContent += `${employeeId},"${displayName}",${frontFileName},${backFileName},${statusUpdateSuccess ? "Yes" : "No"}\n`;
                 
                 setExportProgress(Math.round((completed / totalSelected) * 100));
             }
@@ -1034,7 +1063,8 @@ const BulkIdCardPreview: React.FC<BulkIdCardPreviewProps> = ({
             const readmeContent = 
                 'BULK ID CARD EXPORT\n\n' +
                 `Exported Date: ${new Date().toLocaleString()}\n` +
-                `Total Employees: ${totalSelected}\n\n` +
+                `Total Employees: ${totalSelected}\n` +
+                `Status Updates: ${successfulUpdates} successful, ${failedUpdates} failed\n\n` +
                 'Each employee folder contains:\n' +
                 '- Front ID card image\n' +
                 '- Back ID card image\n' +
@@ -1058,10 +1088,19 @@ const BulkIdCardPreview: React.FC<BulkIdCardPreviewProps> = ({
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             saveAs(zipContent, `employee_id_cards_${timestamp}.zip`);
             
-            // Final success status
-            setLoadingStatus(`Successfully exported ${totalSelected} ID cards!`);
+            // Final success status with update information
+            const statusMessage = `Successfully exported ${totalSelected} ID cards! ` +
+                `(${successfulUpdates} status updates successful, ${failedUpdates} failed)`;
+            setLoadingStatus(statusMessage);
             
-            alert(`Successfully exported ID cards for ${totalSelected} employees!`);
+            // Show different alert based on status update results
+            if (failedUpdates === 0) {
+                alert(`Successfully exported ${totalSelected} ID cards with all status updates completed!`);
+            } else if (successfulUpdates === 0) {
+                alert(`ID cards were exported but status updates failed. Please contact an administrator.`);
+            } else {
+                alert(`ID cards exported successfully, but ${failedUpdates} of ${totalSelected} status updates failed.`);
+            }
         } catch (error) {
             console.error("Error exporting ID cards:", error);
             setErrorMessage(`Error exporting ID cards: ${error instanceof Error ? error.message : 'Unknown error'}`);
