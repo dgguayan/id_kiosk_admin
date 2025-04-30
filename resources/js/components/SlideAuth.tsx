@@ -128,7 +128,7 @@ export default function SlideAuth({ initialMode, embedded = false, onClose }: Sl
                                             <img
                                                 src="/images/designs/MMHI_01.png"
                                                 alt="Logo"
-                                                className="h-24 object-contain"
+                                                className="h-24 object-contain dark:invert"
                                             />
                                         </div>
                                         <h1 className="text-3xl font-bold mb-8 text-gray-800 dark:text-white">Sign In</h1>
