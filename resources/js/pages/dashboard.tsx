@@ -29,19 +29,20 @@ const staticDashboardData = {
         },
         {
             id: 2,
-            code: 'MMEI',
-            name: 'Enterprises Incorporated',
-            totalEmployees: 0,
-            idCompletionPercentage: 0,
-            logoUrl: '/images/logos/mmei-logo.png'
-        },
-        {
-            id: 3,
             code: 'MMFI',
             name: 'Farms Incorporated',
             totalEmployees: 0,
             idCompletionPercentage: 0,
             logoUrl: '/images/logos/mmfi-logo.png'
+            
+        },
+        {
+            id: 3,
+            code: 'MMEI',
+            name: 'Enterprises Incorporated',
+            totalEmployees: 0,
+            idCompletionPercentage: 0,
+            logoUrl: '/images/logos/mmei-logo.png'
         },
         {
             id: 4,
