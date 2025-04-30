@@ -67,18 +67,22 @@ Route::get('/network-images/{folder}/{filename}', function ($folder, $filename) 
 
 // Activity Log Routes
 Route::middleware(['auth'])->group(function () {
-    Route::get('/activity-log', [ActivityLogController::class, 'index'])->name('activity-log.index');
     Route::get('/activity-log/{id}', [ActivityLogController::class, 'show'])->name('activity-log.show');
     Route::delete('/activity-log/clear-all', [ActivityLogController::class, 'clearAll'])->name('activity-log.clear-all');
 });
 
 // User Management Routes
 Route::middleware('auth')->group(function () {
-    Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
     Route::post('/user-management', [UserManagementController::class, 'store'])->name('user-management.store');
     Route::put('/user-management/{user}', [UserManagementController::class, 'update'])->name('user-management.update');
     Route::delete('/user-management/{user}', [UserManagementController::class, 'destroy'])->name('user-management.destroy');
 });
+
+Route::group(['middleware' => ['auth', \App\Http\Middleware\CheckUserRole::class.':Admin']], function () {
+    Route::get('/activity-log', [ActivityLogController::class, 'index'])->name('activity-log.index');
+    Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
+});
+
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
