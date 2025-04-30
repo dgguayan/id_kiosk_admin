@@ -5,11 +5,11 @@ import SlideAuth from '@/components/SlideAuth';
 
 export default function Welcome() {
     const { auth } = usePage<SharedData>().props;
-    const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+    const [authMode, setAuthMode] = useState<'login' | 'forgot'>('login');
 
     // Auth component is directly embedded, so we just need 
     // this function to switch between modes
-    const switchAuthMode = (mode: 'login' | 'register') => {
+    const switchAuthMode = (mode: 'login' | 'forgot') => {
         setAuthMode(mode);
     };
 
