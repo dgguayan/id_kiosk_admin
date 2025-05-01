@@ -13,7 +13,6 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-// Fallback static data in case API data is not available
 const staticDashboardData = {
     totalEmployees: 0,
     pendingIDs: 0,
@@ -64,10 +63,8 @@ const staticDashboardData = {
 };
 
 export default function Dashboard() {
-    // Get dashboard data from backend
     const { dashboardData = staticDashboardData } = usePage().props as any;
     
-    // Use data from backend, or fallback to static data if not available
     const {
         totalEmployees, 
         pendingIDs, 
@@ -79,7 +76,6 @@ export default function Dashboard() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Employee ID Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                {/* Header section */}
                 <div className="flex items-center justify-between mb-4">
                     <h1 className="text-2xl font-bold">Employee ID Dashboard</h1>
                     <div className="text-sm text-gray-500 flex items-center">
@@ -90,31 +86,30 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* Summary statistics cards */}
                 <div className="grid auto-rows-min gap-4 md:grid-cols-3">
                     <StatCard 
                         title="Pending IDs" 
                         value={pendingIDs}
                         iconType="pending"
+                        href="/pending-id"
                     />
                     <StatCard 
                         title="Total Employees" 
                         value={totalEmployees}
                         iconType="total"
+                        href="/employee"
                     />
                     <StatCard 
                         title="Total ID Processed" 
                         value={totalIDCounter}
                         iconType="processed"
+                        href="/employee"
                     />
                 </div>
 
-                {/* Business units section */}
                 <div>
-                    {/* Business Units Heading */}
                     <h2 className="text-xl font-semibold mb-4">All of M. Montesclaros Business Units</h2>
                     
-                    {/* Main HQ Card - Larger */}
                     {businessUnits
                         .filter((unit: { name: string; }) => unit.name === 'MMHI')
                         .map((unit: typeof businessUnits[0]) => (
@@ -126,7 +121,6 @@ export default function Dashboard() {
                         ))
                     }
 
-                    {/* Other Business Units */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
                         {businessUnits
                             .filter((unit: { name: string; }) => unit.name !== 'MMHI')
