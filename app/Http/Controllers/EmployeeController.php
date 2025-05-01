@@ -958,31 +958,22 @@ class EmployeeController extends Controller
     public function updateIdStatus($uuid)
     {
         try {
-            \Log::info('Updating ID status for employee UUID: ' . $uuid);
             
             DB::beginTransaction();
             
-            // Find the employee
             $employee = Employee::where('uuid', $uuid)->firstOrFail();
-            \Log::info('Found employee: ' . $employee->id_no);
             
-            // Update the ID status to 'printed'
             $employee->id_status = 'printed';
             
-            // Increment the employee's own employee_id_counter
             if (isset($employee->employee_id_counter)) {
                 $oldCounter = $employee->employee_id_counter;
                 $employee->employee_id_counter = (int)$employee->employee_id_counter + 1;
-                \Log::info("Updated employee {$employee->id_no}'s counter from {$oldCounter} to {$employee->employee_id_counter}");
             } else {
-                // If employee_id_counter doesn't exist or is null, set it to 1
                 $employee->employee_id_counter = 1;
-                \Log::info("Set employee {$employee->id_no}'s counter to 1 (was not set previously)");
             }
             
             $employee->save();
             
-            // Log the activity of exporting the ID card
             $fullName = $employee->employee_firstname . ' ' . $employee->employee_lastname;
             ActivityLogService::log(
                 'employee_id_exported',
@@ -1007,10 +998,7 @@ class EmployeeController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error updating employee ID status: ' . $e->getMessage());
-            \Log::error($e->getTraceAsString());
             
-            // Provide more detailed error information
             $errorMessage = 'Failed to update employee ID status: ';
             
             if (strpos($e->getMessage(), 'employee_id_counter') !== false) {
