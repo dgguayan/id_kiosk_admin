@@ -17,7 +17,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 const staticDashboardData = {
     totalEmployees: 0,
     pendingIDs: 0,
-    TotalIDCounter: 0,
+    totalIDCounter: 0,
     businessUnits: [
         {
             id: 1,
@@ -71,7 +71,7 @@ export default function Dashboard() {
     const {
         totalEmployees, 
         pendingIDs, 
-        TotalIDCounter, 
+        totalIDCounter, 
         businessUnits
     } = dashboardData;
 
@@ -94,17 +94,17 @@ export default function Dashboard() {
                 <div className="grid auto-rows-min gap-4 md:grid-cols-3">
                     <StatCard 
                         title="Pending IDs" 
-                        value={pendingIDs} 
+                        value={pendingIDs}
                         iconType="pending"
                     />
                     <StatCard 
                         title="Total Employees" 
-                        value={totalEmployees} 
+                        value={totalEmployees}
                         iconType="total"
                     />
                     <StatCard 
                         title="Total ID Processed" 
-                        value={TotalIDCounter} 
+                        value={totalIDCounter}
                         iconType="processed"
                     />
                 </div>
@@ -112,11 +112,11 @@ export default function Dashboard() {
                 {/* Business units section */}
                 <div>
                     {/* Business Units Heading */}
-                    <h2 className="text-xl font-semibold mb-4">M. Montesclaros Business Units</h2>
+                    <h2 className="text-xl font-semibold mb-4">All of M. Montesclaros Business Units</h2>
                     
                     {/* Main HQ Card - Larger */}
                     {businessUnits
-                        .filter((unit: { code: string; }) => unit.code === 'MMHI')
+                        .filter((unit: { name: string; }) => unit.name === 'MMHI')
                         .map((unit: typeof businessUnits[0]) => (
                             <BusinessUnitCard 
                                 key={unit.id}
@@ -129,7 +129,7 @@ export default function Dashboard() {
                     {/* Other Business Units */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
                         {businessUnits
-                            .filter((unit: { code: string; }) => unit.code !== 'MMHI')
+                            .filter((unit: { name: string; }) => unit.name !== 'MMHI')
                             .map((unit: typeof businessUnits[0]) => (
                                 <BusinessUnitCard 
                                     key={unit.id}

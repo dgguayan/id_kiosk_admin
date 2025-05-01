@@ -44,6 +44,8 @@ class BusinessUnit extends Model
      */
     protected $fillable = [
         'businessunit_name',
+        'businessunit_image_path',
+        'businessunit_code',
     ];
 
     /**

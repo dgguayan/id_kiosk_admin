@@ -15,6 +15,8 @@ return new class extends Migration
         Schema::create('business_units', function (Blueprint $table) {
             $table->id('businessunit_id');
             $table->string('businessunit_name');
+            $table->string('businessunit_image_path')->nullable();
+            $table->string('businessunit_code')->nullable();
             $table->timestamps();
         });
     }

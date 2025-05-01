@@ -7,6 +7,7 @@ use Inertia\Inertia;
 use App\Models\BusinessUnit;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 
 class BusinessUnitController extends Controller
 {
@@ -51,44 +52,53 @@ class BusinessUnitController extends Controller
      */
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'businessunit_name' => 'required|string|max:255|unique:business_units,businessunit_name',
+        $validated = $request->validate([
+            'businessunit_name' => 'required|string|max:255',
+            'businessunit_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Validate image
         ]);
-        
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator);
+
+        $businessUnit = new BusinessUnit();
+        $businessUnit->businessunit_name = $validated['businessunit_name'];
+
+        // Handle image upload
+        if ($request->hasFile('businessunit_image')) {
+            $path = $request->file('businessunit_image')->store('business_units', 'public');
+            $businessUnit->businessunit_image_path = $path;
         }
-        
-        BusinessUnit::create([
-            'businessunit_name' => $request->businessunit_name,
-        ]);
-        
-        return redirect()->route('business-unit.index')->with('success', 'Business unit created successfully.');
+
+        $businessUnit->save();
+
+        return redirect()->route('business-unit.index');
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, BusinessUnit $businessUnit)
+    public function update(Request $request, $id)
     {
-        // Check if user has permission to update
-        if (Auth::user()->role !== 'Admin') {
-            return redirect()->back()->with('error', 'You do not have permission to perform this action.');
-        }
-        
-        $validator = Validator::make($request->all(), [
-            'businessunit_name' => 'required|string|max:255|unique:business_units,businessunit_name,' . $businessUnit->businessunit_id . ',businessunit_id',
+        $validated = $request->validate([
+            'businessunit_name' => 'required|string|max:255',
+            'businessunit_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Validate image
         ]);
-        
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator);
+
+        $businessUnit = BusinessUnit::findOrFail($id);
+        $businessUnit->businessunit_name = $validated['businessunit_name'];
+
+        // Handle image upload
+        if ($request->hasFile('businessunit_image')) {
+            // Delete old image if exists
+            if ($businessUnit->businessunit_image_path) {
+                Storage::disk('public')->delete($businessUnit->businessunit_image_path);
+            }
+
+            // Store new image
+            $path = $request->file('businessunit_image')->store('business_units', 'public');
+            $businessUnit->businessunit_image_path = $path;
         }
-        
-        $businessUnit->update([
-            'businessunit_name' => $request->businessunit_name,
-        ]);
-        
-        return redirect()->route('business-unit.index')->with('success', 'Business unit updated successfully.');
+
+        $businessUnit->save();
+
+        return redirect()->route('business-unit.index');
     }
 
     /**
