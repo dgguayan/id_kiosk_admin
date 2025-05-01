@@ -20,6 +20,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface BusinessUnit {
     businessunit_id: string;
     businessunit_name: string;
+    businessunit_image_path?: string;
 }
 
 interface PageMeta {
@@ -69,6 +70,7 @@ export default function BusinessUnitIndex({
     const [addModalOpen, setAddModalOpen] = useState(false);
     const [newBusinessUnit, setNewBusinessUnit] = useState({
         businessunit_name: '',
+        businessunit_image: null as File | null,
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -77,7 +79,9 @@ export default function BusinessUnitIndex({
     const [businessUnitToEdit, setBusinessUnitToEdit] = useState<BusinessUnit | null>(null);
     const [editFormData, setEditFormData] = useState({
         businessunit_name: '',
+        businessunit_image: null as File | null, // Add this line
     });
+
     const [isEditing, setIsEditing] = useState(false);
 
     // Compute selected business unit count
@@ -278,16 +282,26 @@ export default function BusinessUnitIndex({
         setAddModalOpen(false);
         setNewBusinessUnit({
             businessunit_name: '',
+            businessunit_image: null as File | null,
         });
         setErrors({});
     };
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setNewBusinessUnit(prev => ({
-            ...prev,
-            [name]: value
-        }));
+        const { name, value, files } = e.target;
+        
+        // Handle file input separately
+        if (name === 'businessunit_image' && files && files.length > 0) {
+            setNewBusinessUnit(prev => ({
+                ...prev,
+                businessunit_image: files[0]
+            }));
+        } else {
+            setNewBusinessUnit(prev => ({
+                ...prev,
+                [name]: value
+            }));
+        }
         
         // Clear error for this field when user types
         if (errors[name]) {
@@ -306,7 +320,16 @@ export default function BusinessUnitIndex({
         
         setIsSubmitting(true);
         
-        router.post(route('business-unit.store'), newBusinessUnit, {
+        // Create FormData to handle file upload
+        const formData = new FormData();
+        formData.append('businessunit_name', newBusinessUnit.businessunit_name);
+        
+        // Only append image if it's selected
+        if (newBusinessUnit.businessunit_image) {
+            formData.append('businessunit_image', newBusinessUnit.businessunit_image);
+        }
+        
+        router.post(route('business-unit.store'), formData, {
             onSuccess: () => {
                 setIsSubmitting(false);
                 closeAddModal();
@@ -333,7 +356,8 @@ export default function BusinessUnitIndex({
             onError: (errors) => {
                 setIsSubmitting(false);
                 setErrors(errors);
-            }
+            },
+            forceFormData: true, // Important: force FormData for file uploads
         });
     };
 
@@ -342,6 +366,7 @@ export default function BusinessUnitIndex({
         
         setEditFormData({
             businessunit_name: businessUnit.businessunit_name,
+            businessunit_image: null, // Initialize as null
         });
         
         setEditModalOpen(true);
@@ -353,17 +378,27 @@ export default function BusinessUnitIndex({
             setBusinessUnitToEdit(null);
             setEditFormData({
                 businessunit_name: '',
+                businessunit_image: null,
             });
             setErrors({});
         }, 200);
     };
 
     const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setEditFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
+        const { name, value, files } = e.target;
+        
+        // Handle file input separately
+        if (name === 'businessunit_image' && files && files.length > 0) {
+            setEditFormData(prev => ({
+                ...prev,
+                businessunit_image: files[0]
+            }));
+        } else {
+            setEditFormData(prev => ({
+                ...prev,
+                [name]: value
+            }));
+        }
         
         // Clear error for this field when user types
         if (errors[name]) {
@@ -382,7 +417,20 @@ export default function BusinessUnitIndex({
         
         setIsEditing(true);
         
-        router.put(route('business-unit.update', businessUnitToEdit.businessunit_id), editFormData, {
+        // Create FormData to handle file upload
+        const formData = new FormData();
+        formData.append('businessunit_name', editFormData.businessunit_name);
+        
+        // Only append image if it's selected
+        if (editFormData.businessunit_image) {
+            formData.append('businessunit_image', editFormData.businessunit_image);
+        }
+        
+        // Add _method field to tell Laravel this is a PUT request
+        formData.append('_method', 'PUT');
+        
+        // Use POST method with _method: put for file uploads in Laravel
+        router.post(route('business-unit.update', businessUnitToEdit.businessunit_id), formData, {
             onSuccess: () => {
                 setIsEditing(false);
                 closeEditModal();
@@ -409,7 +457,8 @@ export default function BusinessUnitIndex({
             onError: (errors) => {
                 setIsEditing(false);
                 setErrors(errors);
-            }
+            },
+            forceFormData: true, // Important: force FormData for file uploads
         });
     };
     
@@ -523,8 +572,28 @@ export default function BusinessUnitIndex({
                                             />
                                         </div>
                                     </Table.Cell>
-                                    <Table.Cell className="font-medium text-gray-900 dark:text-white text-center">
-                                        {businessUnit.businessunit_name}
+                                    <Table.Cell className="font-medium text-gray-900 dark:text-white">
+                                        <div className="flex flex-col items-center justify-center text-center">
+                                            {businessUnit.businessunit_image_path ? (
+                                                <div className="flex-shrink-0 h-10 w-10 mx-auto mb-2">
+                                                    <img 
+                                                        src={`/storage/${businessUnit.businessunit_image_path}`} 
+                                                        alt={businessUnit.businessunit_name}
+                                                        className="h-10 w-10 object-cover rounded-md border border-gray-200 dark:border-gray-700 dark:invert"
+                                                        onError={(e) => {
+                                                            e.currentTarget.src = '/images/placeholder.png';
+                                                        }}
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="flex-shrink-0 h-10 w-10 bg-gray-100 dark:bg-gray-700 rounded-md mx-auto mb-2 flex items-center justify-center">
+                                                    <span className="text-gray-400 dark:text-gray-500 text-xs">No img</span>
+                                                </div>
+                                            )}
+                                            <div className="min-w-0 flex-1">
+                                                <span className="text-sm font-medium truncate block">{businessUnit.businessunit_name}</span>
+                                            </div>
+                                        </div>
                                     </Table.Cell>
                                     <Table.Cell>
                                         <div className="flex justify-center space-x-2">
@@ -781,6 +850,37 @@ export default function BusinessUnitIndex({
                                                         <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.businessunit_name}</p>
                                                     )}
                                                 </div>
+
+                                                {/* Add image upload field */}
+                                                <div className="mt-4">
+                                                    <label htmlFor="businessunit_image" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                        Business Unit Image
+                                                    </label>
+                                                    <div className="mt-1">
+                                                        <input
+                                                            type="file"
+                                                            name="businessunit_image"
+                                                            id="businessunit_image"
+                                                            accept="image/*"
+                                                            onChange={handleInputChange}
+                                                            className="sr-only"
+                                                        />
+                                                        <label
+                                                            htmlFor="businessunit_image"
+                                                            className="cursor-pointer inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-600"
+                                                        >
+                                                            <span>{newBusinessUnit.businessunit_image ? 'Change image' : 'Upload image'}</span>
+                                                        </label>
+                                                        {newBusinessUnit.businessunit_image && (
+                                                            <span className="ml-3 text-sm text-gray-500 dark:text-gray-400">
+                                                                {newBusinessUnit.businessunit_image.name}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {errors.businessunit_image && (
+                                                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.businessunit_image}</p>
+                                                    )}
+                                                </div>
                                                 
                                                 <div className="mt-5 sm:mt-6 sm:flex sm:flex-row-reverse">
                                                     <button
@@ -885,6 +985,51 @@ export default function BusinessUnitIndex({
                                                     )}
                                                 </div>
                                                 
+                                                {/* Add image upload field */}
+                                                <div className="mt-4">
+                                                    <label htmlFor="edit_businessunit_image" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                        Business Unit Image
+                                                    </label>
+                                                    <div className="mt-1 flex items-center space-x-4">
+                                                        {/* Show current image if it exists */}
+                                                        {businessUnitToEdit?.businessunit_image_path && (
+                                                            <div className="flex-shrink-0 h-16 w-16">
+                                                                <img 
+                                                                    src={`/storage/${businessUnitToEdit.businessunit_image_path}`} 
+                                                                    alt={businessUnitToEdit.businessunit_name}
+                                                                    className="h-16 w-16 object-cover rounded-md border border-gray-200 dark:border-gray-700"
+                                                                />
+                                                            </div>
+                                                        )}
+                                                        
+                                                        <div className="flex-1">
+                                                            <input
+                                                                type="file"
+                                                                name="businessunit_image"
+                                                                id="edit_businessunit_image"
+                                                                accept="image/*"
+                                                                onChange={handleEditInputChange}
+                                                                className="sr-only"
+                                                            />
+                                                            <label
+                                                                htmlFor="edit_businessunit_image"
+                                                                className="cursor-pointer inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-600"
+                                                            >
+                                                                <span>{editFormData.businessunit_image ? 'Change image' : 'Upload image'}</span>
+                                                            </label>
+                                                            {editFormData.businessunit_image && (
+                                                                <span className="ml-3 text-sm text-gray-500 dark:text-gray-400">
+                                                                    {editFormData.businessunit_image.name}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    {errors.businessunit_image && (
+                                                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.businessunit_image}</p>
+                                                    )}
+                                                </div>
+                                                
+                                                {/* Rest of the form */}
                                                 <div className="mt-5 sm:mt-6 sm:flex sm:flex-row-reverse">
                                                     <button
                                                         type="submit"
