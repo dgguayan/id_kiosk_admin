@@ -1,7 +1,6 @@
-import { Fragment, useState, useEffect } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
+import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
-import { XCircle } from 'lucide-react';
+import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog';
 
 interface Employee {
     uuid: number;
@@ -247,516 +246,497 @@ const EmployeeEditModal: React.FC<EmployeeEditModalProps> = ({
     if (!employee) return null;
 
     return (
-        <Transition.Root show={isOpen} as={Fragment}>
-            <Dialog as="div" className="relative z-10" onClose={closeModal}>
-                <Transition.Child
-                    as={Fragment}
-                    enter="ease-out duration-300"
-                    enterFrom="opacity-0"
-                    enterTo="opacity-100"
-                    leave="ease-in duration-200"
-                    leaveFrom="opacity-100"
-                    leaveTo="opacity-0"
-                >
-                    <div className="fixed inset-0 bg-gray-500 bg-opacity-50 transition-opacity" />
-                </Transition.Child>
+        <Dialog open={isOpen} onOpenChange={(open) => {
+            if (!open) {
+                closeModal();
+            }
+        }}>
+            <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>Edit Employee: {employee.employee_firstname} {employee.employee_lastname}</DialogTitle>
+                </DialogHeader>
 
-                <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
-                    <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                        <Transition.Child
-                            as={Fragment}
-                            enter="ease-out duration-300"
-                            enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                            enterTo="opacity-100 translate-y-0 sm:scale-100"
-                            leave="ease-in duration-200"
-                            leaveFrom="opacity-100 translate-y-0 sm:scale-100"
-                            leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                        >
-                            <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all dark:bg-gray-800 sm:my-8 sm:w-full sm:max-w-2xl sm:p-6">
-                                <div className="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
-                                    <button
-                                        type="button"
-                                        className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none dark:bg-gray-800 dark:text-gray-500 dark:hover:text-gray-400"
-                                        onClick={closeModal}
-                                    >
-                                        <span className="sr-only">Close</span>
-                                        <XCircle className="h-6 w-6" aria-hidden="true" />
-                                    </button>
-                                </div>
-                                
-                                <div className="sm:flex sm:items-start">
-                                    <div className="text-center sm:mt-0 sm:text-left w-full">
-                                        <Dialog.Title as="h3" className="text-xl font-semibold leading-6 text-gray-900 dark:text-white mb-4">
-                                            Edit Employee: {employee.employee_firstname} {employee.employee_lastname}
-                                        </Dialog.Title>
-                                        
-                                        <form onSubmit={handleEditSubmit} className="space-y-6 overflow-y-auto max-h-[70vh]">
-                                            <div>
-                                                <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
-                                                    Personal Information
-                                                </h4>
-                                                <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4">
-                                                    <div>
-                                                        <label htmlFor="edit_employee_firstname" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            First Name *
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            name="employee_firstname"
-                                                            id="edit_employee_firstname"
-                                                            value={editFormData.employee_firstname}
-                                                            onChange={handleEditInputChange}
-                                                            className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm
-                                                                ${errors.employee_firstname 
-                                                                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-700' 
-                                                                    : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700'
-                                                                } dark:bg-gray-800 dark:text-white`}
-                                                        />
-                                                        {errors.employee_firstname && (
-                                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.employee_firstname}</p>
-                                                        )}
-                                                    </div>
-                                                    
-                                                    <div>
-                                                        <label htmlFor="edit_employee_lastname" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            Last Name *
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            name="employee_lastname"
-                                                            id="edit_employee_lastname"
-                                                            value={editFormData.employee_lastname}
-                                                            onChange={handleEditInputChange}
-                                                            className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm
-                                                                ${errors.employee_lastname 
-                                                                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-700' 
-                                                                    : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700'
-                                                                } dark:bg-gray-800 dark:text-white`}
-                                                        />
-                                                        {errors.employee_lastname && (
-                                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.employee_lastname}</p>
-                                                        )}
-                                                    </div>
-                                                    
-                                                    <div>
-                                                        <label htmlFor="edit_employee_middlename" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            Middle Name
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            name="employee_middlename"
-                                                            id="edit_employee_middlename"
-                                                            value={editFormData.employee_middlename}
-                                                            onChange={handleEditInputChange}
-                                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                                        />
-                                                    </div>
-                                                    
-                                                    <div>
-                                                        <label htmlFor="edit_employee_name_extension" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            Name Extension
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            name="employee_name_extension"
-                                                            id="edit_employee_name_extension"
-                                                            placeholder="Jr., Sr., III, etc."
-                                                            value={editFormData.employee_name_extension}
-                                                            onChange={handleEditInputChange}
-                                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                                        />
-                                                    </div>
-
-                                                    <div>
-                                                        <label htmlFor="edit_birthday" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            Birthday
-                                                        </label>
-                                                        <input
-                                                            type="date"
-                                                            name="birthday"
-                                                            id="edit_birthday"
-                                                            value={editFormData.birthday || ''}
-                                                            onChange={handleEditInputChange}
-                                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                                        />
-                                                    </div>
-                                                    
-                                                    <div className="sm:col-span-2">
-                                                        <label htmlFor="edit_address" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            Address
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            name="address"
-                                                            id="edit_address"
-                                                            value={editFormData.address}
-                                                            onChange={handleEditInputChange}
-                                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                                        />
-                                                    </div>
+                <form onSubmit={handleEditSubmit} className="space-y-6">
+                    <div className="flex flex-col md:flex-row gap-6">
+                        {/* Left Side - Images */}
+                        <div className="md:w-1/3 space-y-6">
+                            <div>
+                                <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
+                                    Images & Documents
+                                </h4>
+                                <div className="space-y-6">
+                                    <div>
+                                        <label htmlFor="edit_image_person" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Profile Photo
+                                        </label>
+                                        <div className="mt-2 flex flex-col items-center">
+                                            {editFilePreviews.image_person ? (
+                                                <img 
+                                                    src={editFilePreviews.image_person.startsWith('data:') 
+                                                        ? editFilePreviews.image_person 
+                                                        : route('network.image', {
+                                                            folder: 'employee',
+                                                            filename: editFilePreviews.image_person
+                                                        })} 
+                                                    alt="Profile preview" 
+                                                    className="h-40 w-40 object-cover rounded-md border border-gray-300 dark:border-gray-600"
+                                                    onError={(e) => {
+                                                        e.currentTarget.onerror = null;
+                                                        e.currentTarget.src = route('employee.placeholder-image');
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div className="h-40 w-40 bg-gray-100 dark:bg-gray-800 rounded-md border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
+                                                    <span className="text-sm text-gray-500 dark:text-gray-400">No photo</span>
                                                 </div>
-                                            </div>
-                                            
-                                            <div>
-                                                <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
-                                                    Employment Information
-                                                </h4>
-                                                <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4">
-                                                    <div>
-                                                        <label htmlFor="edit_position" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            Position *
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            name="position"
-                                                            id="edit_position"
-                                                            value={editFormData.position}
-                                                            onChange={handleEditInputChange}
-                                                            className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm
-                                                                ${errors.position 
-                                                                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-700' 
-                                                                    : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700'
-                                                                } dark:bg-gray-800 dark:text-white`}
-                                                        />
-                                                        {errors.position && (
-                                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.position}</p>
-                                                        )}
-                                                    </div>
-                                                    
-                                                    <div>
-                                                        <label htmlFor="edit_businessunit_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            Business Unit *
-                                                        </label>
-                                                        <select
-                                                            name="businessunit_id"
-                                                            id="edit_businessunit_id"
-                                                            value={editFormData.businessunit_id}
-                                                            onChange={handleEditInputChange}
-                                                            className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm
-                                                                ${errors.businessunit_id 
-                                                                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-700' 
-                                                                    : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700'
-                                                                } dark:bg-gray-800 dark:text-white`}
-                                                        >
-                                                            <option value="">Select Business Unit</option>
-                                                            {businessUnits.map(unit => (
-                                                                <option key={unit.id} value={unit.id.toString()}>
-                                                                    {unit.businessunit_name}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                        {errors.businessunit_id && (
-                                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.businessunit_id}</p>
-                                                        )}
-                                                    </div>
-                                                    
-                                                    <div>
-                                                        <label htmlFor="edit_employment_status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            Employment Status *
-                                                        </label>
-                                                        <select
-                                                            name="employment_status"
-                                                            id="edit_employment_status"
-                                                            value={editFormData.employment_status}
-                                                            onChange={handleEditInputChange}
-                                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                                        >
-                                                            <option value="Active">Active</option>
-                                                            <option value="Inactive">Inactive</option>
-                                                        </select>
-                                                    </div>
-                                                    
-                                                    <div>
-                                                        <label htmlFor="edit_id_status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            ID Status
-                                                        </label>
-                                                        <select
-                                                            name="id_status"
-                                                            id="edit_id_status"
-                                                            value={editFormData.id_status}
-                                                            onChange={handleEditInputChange}
-                                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                                        >
-                                                            <option value="">Select Status</option>
-                                                            <option value="pending">Pending</option>
-                                                            <option value="printed">Printed</option>
-                                                        </select>
-                                                    </div>
+                                            )}
+                                            <input
+                                                type="file"
+                                                name="image_person"
+                                                id="edit_image_person"
+                                                accept="image/*"
+                                                onChange={handleEditFileChange}
+                                                className="mt-3 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-200 dark:text-gray-400"
+                                            />
+                                            {errors.image_person && (
+                                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.image_person}</p>
+                                            )}
+                                            {/* Store original network path */}
+                                            {employee.image_person && (
+                                                <input type="hidden" name="original_image_person" value={employee.image_person} />
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label htmlFor="edit_image_signature" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Signature
+                                        </label>
+                                        <div className="mt-2 flex flex-col items-center">
+                                            {editFilePreviews.image_signature ? (
+                                                <img 
+                                                    src={editFilePreviews.image_signature.startsWith('data:') 
+                                                        ? editFilePreviews.image_signature 
+                                                        : route('network.image', {
+                                                            folder: 'signature',
+                                                            filename: editFilePreviews.image_signature
+                                                        })} 
+                                                    alt="Signature preview" 
+                                                    className="h-24 w-40 object-contain rounded-md border border-gray-300 dark:border-gray-600"
+                                                    onError={(e) => {
+                                                        e.currentTarget.onerror = null;
+                                                        e.currentTarget.src = route('employee.placeholder-image');
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div className="h-24 w-40 bg-gray-100 dark:bg-gray-800 rounded-md border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
+                                                    <span className="text-sm text-gray-500 dark:text-gray-400">No signature</span>
                                                 </div>
-                                            </div>
-                                            
-                                            <div>
-                                                <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
-                                                    Government IDs
-                                                </h4>
-                                                <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4">
-                                                    <div>
-                                                        <label htmlFor="edit_tin_no" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            TIN Number
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            name="tin_no"
-                                                            id="edit_tin_no"
-                                                            value={editFormData.tin_no}
-                                                            onChange={handleEditInputChange}
-                                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                                        />
-                                                    </div>
-                                                    
-                                                    <div>
-                                                        <label htmlFor="edit_sss_no" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            SSS Number
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            name="sss_no"
-                                                            id="edit_sss_no"
-                                                            value={editFormData.sss_no}
-                                                            onChange={handleEditInputChange}
-                                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                                        />
-                                                    </div>
-                                                    
-                                                    <div>
-                                                        <label htmlFor="edit_phic_no" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            PhilHealth Number
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            name="phic_no"
-                                                            id="edit_phic_no"
-                                                            value={editFormData.phic_no}
-                                                            onChange={handleEditInputChange}
-                                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                                        />
-                                                    </div>
-                                                    
-                                                    <div>
-                                                        <label htmlFor="edit_hdmf_no" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            Pag-IBIG Number
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            name="hdmf_no"
-                                                            id="edit_hdmf_no"
-                                                            value={editFormData.hdmf_no}
-                                                            onChange={handleEditInputChange}
-                                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                                        />
-                                                    </div>
+                                            )}
+                                            <input
+                                                type="file"
+                                                name="image_signature"
+                                                id="edit_image_signature"
+                                                accept="image/*"
+                                                onChange={handleEditFileChange}
+                                                className="mt-3 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-200 dark:text-gray-400"
+                                            />
+                                            {errors.image_signature && (
+                                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.image_signature}</p>
+                                            )}
+                                            {/* Store original network path */}
+                                            {employee.image_signature && (
+                                                <input type="hidden" name="original_image_signature" value={employee.image_signature} />
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label htmlFor="edit_image_qrcode" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            QR Code
+                                        </label>
+                                        <div className="mt-2 flex flex-col items-center">
+                                            {editFilePreviews.image_qrcode ? (
+                                                <img 
+                                                    src={editFilePreviews.image_qrcode.startsWith('data:') 
+                                                        ? editFilePreviews.image_qrcode
+                                                        : route('network.image', {
+                                                            folder: 'qrcode',
+                                                            filename: editFilePreviews.image_qrcode
+                                                        })} 
+                                                    alt="QR Code preview" 
+                                                    className="h-40 w-40 object-contain rounded-md border border-gray-300 dark:border-gray-600"
+                                                    onError={(e) => {
+                                                        e.currentTarget.onerror = null;
+                                                        e.currentTarget.src = route('employee.placeholder-image');
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div className="h-40 w-40 bg-gray-100 dark:bg-gray-800 rounded-md border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
+                                                    <span className="text-sm text-gray-500 dark:text-gray-400">No QR code</span>
                                                 </div>
-                                            </div>
-                                            
-                                            <div>
-                                                <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
-                                                    Emergency Contact
-                                                </h4>
-                                                <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4">
-                                                    <div>
-                                                        <label htmlFor="edit_emergency_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            Contact Name
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            name="emergency_name"
-                                                            id="edit_emergency_name"
-                                                            value={editFormData.emergency_name}
-                                                            onChange={handleEditInputChange}
-                                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                                        />
-                                                    </div>
-                                                    
-                                                    <div>
-                                                        <label htmlFor="edit_emergency_contact_number" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            Contact Number
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            name="emergency_contact_number"
-                                                            id="edit_emergency_contact_number"
-                                                            value={editFormData.emergency_contact_number}
-                                                            onChange={handleEditInputChange}
-                                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                                        />
-                                                    </div>
-                                                    
-                                                    <div className="sm:col-span-2">
-                                                        <label htmlFor="edit_emergency_address" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            Contact Address
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            name="emergency_address"
-                                                            id="edit_emergency_address"
-                                                            value={editFormData.emergency_address}
-                                                            onChange={handleEditInputChange}
-                                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div>
-                                                <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
-                                                    Images & Documents
-                                                </h4>
-                                                <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-3 sm:gap-x-4">
-                                                    <div>
-                                                        <label htmlFor="edit_image_person" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            Profile Photo
-                                                        </label>
-                                                        {editFilePreviews.image_person && (
-                                                            <div className="mt-2 mb-2">
-                                                                <img 
-                                                                    src={editFilePreviews.image_person.startsWith('data:') 
-                                                                        ? editFilePreviews.image_person 
-                                                                        : route('network.image', {
-                                                                            folder: 'employee',
-                                                                            filename: editFilePreviews.image_person
-                                                                        })}
-                                                                    alt="Profile" 
-                                                                    className="h-20 w-20 object-cover rounded-md border border-gray-300 dark:border-gray-600"
-                                                                    onError={(e) => {
-                                                                        e.currentTarget.onerror = null;
-                                                                        e.currentTarget.src = route('employee.placeholder-image');
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        )}
-                                                        <input
-                                                            type="file"
-                                                            name="image_person"
-                                                            id="edit_image_person"
-                                                            accept="image/*"
-                                                            onChange={handleEditFileChange}
-                                                            className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-200 dark:text-gray-400"
-                                                        />
-                                                        {errors.image_person && (
-                                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.image_person}</p>
-                                                        )}
-                                                        {/* Store original network path */}
-                                                        {employee.image_person && (
-                                                            <input type="hidden" name="original_image_person" value={employee.image_person} />
-                                                        )}
-                                                    </div>
-
-                                                    <div>
-                                                        <label htmlFor="edit_image_signature" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            Signature
-                                                        </label>
-                                                        {editFilePreviews.image_signature && (
-                                                            <div className="mt-2 mb-2">
-                                                                <img 
-                                                                    src={editFilePreviews.image_signature.startsWith('data:') 
-                                                                        ? editFilePreviews.image_signature 
-                                                                        : route('network.image', {
-                                                                            folder: 'signature',
-                                                                            filename: editFilePreviews.image_signature
-                                                                        })} 
-                                                                    alt="Signature" 
-                                                                    className="h-20 w-auto max-w-full object-contain rounded-md border border-gray-300 dark:border-gray-600"
-                                                                    onError={(e) => {
-                                                                        e.currentTarget.onerror = null;
-                                                                        e.currentTarget.src = route('employee.placeholder-image');
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        )}
-                                                        <input
-                                                            type="file"
-                                                            name="image_signature"
-                                                            id="edit_image_signature"
-                                                            accept="image/*"
-                                                            onChange={handleEditFileChange}
-                                                            className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-200 dark:text-gray-400"
-                                                        />
-                                                        {errors.image_signature && (
-                                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.image_signature}</p>
-                                                        )}
-                                                        {/* Store original network path */}
-                                                        {employee.image_signature && (
-                                                            <input type="hidden" name="original_image_signature" value={employee.image_signature} />
-                                                        )}
-                                                    </div>
-
-                                                    <div>
-                                                        <label htmlFor="edit_image_qrcode" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            QR Code
-                                                        </label>
-                                                        {editFilePreviews.image_qrcode && (
-                                                            <div className="mt-2 mb-2">
-                                                                <img 
-                                                                    src={editFilePreviews.image_qrcode.startsWith('data:') 
-                                                                        ? editFilePreviews.image_qrcode
-                                                                        : route('network.image', {
-                                                                            folder: 'qrcode',
-                                                                            filename: editFilePreviews.image_qrcode
-                                                                        })} 
-                                                                    alt="QR Code" 
-                                                                    className="h-20 w-20 object-contain rounded-md border border-gray-300 dark:border-gray-600"
-                                                                    onError={(e) => {
-                                                                        e.currentTarget.onerror = null;
-                                                                        e.currentTarget.src = route('employee.placeholder-image');
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        )}
-                                                        <input
-                                                            type="file"
-                                                            name="image_qrcode"
-                                                            id="edit_image_qrcode"
-                                                            accept="image/*"
-                                                            onChange={handleEditFileChange}
-                                                            className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-200 dark:text-gray-400"
-                                                        />
-                                                        {errors.image_qrcode && (
-                                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.image_qrcode}</p>
-                                                        )}
-                                                        {/* Store original network path */}
-                                                        {employee.image_qrcode && (
-                                                            <input type="hidden" name="original_image_qrcode" value={employee.image_qrcode} />
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="mt-5 sm:mt-6 sm:flex sm:flex-row-reverse">
-                                                <button
-                                                    type="submit"
-                                                    disabled={isEditing}
-                                                    className="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    {isEditing ? (
-                                                        <>
-                                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                            </svg>
-                                                            Saving...
-                                                        </>
-                                                    ) : (
-                                                        'Save Changes'
-                                                    )}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    disabled={isEditing}
-                                                    className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto dark:bg-gray-700 dark:text-white dark:ring-gray-600 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    onClick={closeModal}
-                                                >
-                                                    Cancel
-                                                </button>
-                                            </div>
-                                        </form>
+                                            )}
+                                            <input
+                                                type="file"
+                                                name="image_qrcode"
+                                                id="edit_image_qrcode"
+                                                accept="image/*"
+                                                onChange={handleEditFileChange}
+                                                className="mt-3 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-200 dark:text-gray-400"
+                                            />
+                                            {errors.image_qrcode && (
+                                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.image_qrcode}</p>
+                                            )}
+                                            {/* Store original network path */}
+                                            {employee.image_qrcode && (
+                                                <input type="hidden" name="original_image_qrcode" value={employee.image_qrcode} />
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </Dialog.Panel>
-                        </Transition.Child>
+                            </div>
+                        </div>
+                        
+                        {/* Right Side - Information */}
+                        <div className="md:w-2/3 space-y-6">
+                            <div>
+                                <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
+                                    Personal Information
+                                </h4>
+                                <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4">
+                                    <div>
+                                        <label htmlFor="edit_employee_firstname" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            First Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="employee_firstname"
+                                            id="edit_employee_firstname"
+                                            value={editFormData.employee_firstname}
+                                            onChange={handleEditInputChange}
+                                            className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm
+                                                ${errors.employee_firstname 
+                                                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-700' 
+                                                    : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700'
+                                                } dark:bg-gray-800 dark:text-white`}
+                                        />
+                                        {errors.employee_firstname && (
+                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.employee_firstname}</p>
+                                        )}
+                                    </div>
+                                    
+                                    <div>
+                                        <label htmlFor="edit_employee_lastname" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Last Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="employee_lastname"
+                                            id="edit_employee_lastname"
+                                            value={editFormData.employee_lastname}
+                                            onChange={handleEditInputChange}
+                                            className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm
+                                                ${errors.employee_lastname 
+                                                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-700' 
+                                                    : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700'
+                                                } dark:bg-gray-800 dark:text-white`}
+                                        />
+                                        {errors.employee_lastname && (
+                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.employee_lastname}</p>
+                                        )}
+                                    </div>
+                                    
+                                    <div>
+                                        <label htmlFor="edit_employee_middlename" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Middle Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="employee_middlename"
+                                            id="edit_employee_middlename"
+                                            value={editFormData.employee_middlename}
+                                            onChange={handleEditInputChange}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                        />
+                                    </div>
+                                    
+                                    <div>
+                                        <label htmlFor="edit_employee_name_extension" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Name Extension
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="employee_name_extension"
+                                            id="edit_employee_name_extension"
+                                            placeholder="Jr., Sr., III, etc."
+                                            value={editFormData.employee_name_extension}
+                                            onChange={handleEditInputChange}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label htmlFor="edit_birthday" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Birthday
+                                        </label>
+                                        <input
+                                            type="date"
+                                            name="birthday"
+                                            id="edit_birthday"
+                                            value={editFormData.birthday || ''}
+                                            onChange={handleEditInputChange}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                        />
+                                    </div>
+                                    
+                                    <div className="sm:col-span-2">
+                                        <label htmlFor="edit_address" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Address
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="address"
+                                            id="edit_address"
+                                            value={editFormData.address}
+                                            onChange={handleEditInputChange}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
+                                    Employment Information
+                                </h4>
+                                <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4">
+                                    <div>
+                                        <label htmlFor="edit_position" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Position *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="position"
+                                            id="edit_position"
+                                            value={editFormData.position}
+                                            onChange={handleEditInputChange}
+                                            className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm
+                                                ${errors.position 
+                                                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-700' 
+                                                    : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700'
+                                                } dark:bg-gray-800 dark:text-white`}
+                                        />
+                                        {errors.position && (
+                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.position}</p>
+                                        )}
+                                    </div>
+                                    
+                                    <div>
+                                        <label htmlFor="edit_businessunit_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Business Unit *
+                                        </label>
+                                        <select
+                                            name="businessunit_id"
+                                            id="edit_businessunit_id"
+                                            value={editFormData.businessunit_id}
+                                            onChange={handleEditInputChange}
+                                            className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm
+                                                ${errors.businessunit_id 
+                                                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-700' 
+                                                    : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700'
+                                                } dark:bg-gray-800 dark:text-white`}
+                                        >
+                                            <option value="">Select Business Unit</option>
+                                            {businessUnits.map(unit => (
+                                                <option key={unit.id} value={unit.id.toString()}>
+                                                    {unit.businessunit_name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {errors.businessunit_id && (
+                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.businessunit_id}</p>
+                                        )}
+                                    </div>
+                                    
+                                    <div>
+                                        <label htmlFor="edit_employment_status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Employment Status *
+                                        </label>
+                                        <select
+                                            name="employment_status"
+                                            id="edit_employment_status"
+                                            value={editFormData.employment_status}
+                                            onChange={handleEditInputChange}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                        >
+                                            <option value="Active">Active</option>
+                                            <option value="Inactive">Inactive</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label htmlFor="edit_id_status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            ID Status
+                                        </label>
+                                        <select
+                                            name="id_status"
+                                            id="edit_id_status"
+                                            value={editFormData.id_status}
+                                            onChange={handleEditInputChange}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                        >
+                                            <option value="">Select Status</option>
+                                            <option value="pending">Pending</option>
+                                            <option value="printed">Printed</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
+                                    Government IDs
+                                </h4>
+                                <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4">
+                                    <div>
+                                        <label htmlFor="edit_tin_no" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            TIN Number
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="tin_no"
+                                            id="edit_tin_no"
+                                            value={editFormData.tin_no}
+                                            onChange={handleEditInputChange}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                        />
+                                    </div>
+                                    
+                                    <div>
+                                        <label htmlFor="edit_sss_no" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            SSS Number
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="sss_no"
+                                            id="edit_sss_no"
+                                            value={editFormData.sss_no}
+                                            onChange={handleEditInputChange}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                        />
+                                    </div>
+                                    
+                                    <div>
+                                        <label htmlFor="edit_phic_no" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            PhilHealth Number
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="phic_no"
+                                            id="edit_phic_no"
+                                            value={editFormData.phic_no}
+                                            onChange={handleEditInputChange}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                        />
+                                    </div>
+                                    
+                                    <div>
+                                        <label htmlFor="edit_hdmf_no" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Pag-IBIG Number
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="hdmf_no"
+                                            id="edit_hdmf_no"
+                                            value={editFormData.hdmf_no}
+                                            onChange={handleEditInputChange}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
+                                    Emergency Contact
+                                </h4>
+                                <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4">
+                                    <div>
+                                        <label htmlFor="edit_emergency_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Contact Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="emergency_name"
+                                            id="edit_emergency_name"
+                                            value={editFormData.emergency_name}
+                                            onChange={handleEditInputChange}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                        />
+                                    </div>
+                                    
+                                    <div>
+                                        <label htmlFor="edit_emergency_contact_number" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Contact Number
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="emergency_contact_number"
+                                            id="edit_emergency_contact_number"
+                                            value={editFormData.emergency_contact_number}
+                                            onChange={handleEditInputChange}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                        />
+                                    </div>
+                                    
+                                    <div className="sm:col-span-2">
+                                        <label htmlFor="edit_emergency_address" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Contact Address
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="emergency_address"
+                                            id="edit_emergency_address"
+                                            value={editFormData.emergency_address}
+                                            onChange={handleEditInputChange}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </Dialog>
-        </Transition.Root>
+                    
+                    <DialogFooter>
+                        <button
+                            type="button"
+                            disabled={isEditing}
+                            className="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={closeModal}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isEditing}
+                            className="ml-3 inline-flex justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-indigo-700 dark:hover:bg-indigo-800"
+                        >
+                            {isEditing ? (
+                                <>
+                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Saving...
+                                </>
+                            ) : (
+                                'Save Changes'
+                            )}
+                        </button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
     );
 };
 
