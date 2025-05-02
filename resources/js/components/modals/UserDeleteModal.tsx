@@ -1,5 +1,5 @@
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { X, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -43,15 +43,6 @@ export default function UserDeleteModal({ isOpen, user, onClose, onSuccess, rout
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>Delete User</DialogTitle>
-                    <div>
-                        <button
-                            onClick={onClose}
-                            className="absolute top-4 right-4 inline-flex items-center justify-center rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
-                        >
-                            <span className="sr-only">Close</span>
-                            <X className="h-5 w-5" aria-hidden="true" />
-                        </button>
-                    </div>
                 </DialogHeader>
 
                 <div className="py-4">
