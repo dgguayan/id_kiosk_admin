@@ -476,15 +476,54 @@ class EmployeeController extends Controller
         ]);
 
         try {
-            // Find all employees by UUIDs
-            $count = Employee::whereIn('uuid', $validated['uuids'])->count();
+            // Find all employees by UUIDs for logging purposes
+            $employees = Employee::whereIn('uuid', $validated['uuids'])->get();
             
-            // Delete them
+            // Log details about each employee being deleted
+            $employeeDetails = $employees->map(function($employee) {
+                return [
+                    'uuid' => $employee->uuid,
+                    'id_no' => $employee->id_no,
+                    'name' => $employee->employee_firstname . ' ' . $employee->employee_lastname,
+                    'position' => $employee->position,
+                    'businessunit_id' => $employee->businessunit_id
+                ];
+            })->toArray();
+            
+            // Delete the employees
             Employee::whereIn('uuid', $validated['uuids'])->delete();
             
+            // Log the activity
+            ActivityLogService::log(
+                'employee_bulk_deleted',
+                $employees->count() . " employees were deleted in bulk",
+                'App\Models\Employee',
+                null,
+                [
+                    'count' => $employees->count(),
+                    'deleted_by' => Auth::user()->name,
+                    'user_role' => Auth::user()->role,
+                    'employee_details' => $employeeDetails
+                ]
+            );
+            
+            // Also log to Laravel's log system for debugging
+            Log::info('Bulk employee deletion', [
+                'count' => $employees->count(),
+                'deleted_by' => Auth::user()->name,
+                'user_role' => Auth::user()->role,
+                'employee_details' => $employeeDetails
+            ]);
+            
             // Return success response
-            return redirect()->back()->with('success', "$count employees have been deleted successfully.");
+            return redirect()->back()->with('success', $employees->count() . " employees have been deleted successfully.");
         } catch (\Exception $e) {
+            Log::error('Failed to delete employees in bulk: ' . $e->getMessage(), [
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'uuids' => $validated['uuids']
+            ]);
+            
             return redirect()->back()->with('error', 'Failed to delete employees: ' . $e->getMessage());
         }
     }

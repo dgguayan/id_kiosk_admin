@@ -20,6 +20,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface BusinessUnit {
     businessunit_id: string;
     businessunit_name: string;
+    businessunit_code: string;
     businessunit_image_path?: string;
 }
 
@@ -70,6 +71,7 @@ export default function BusinessUnitIndex({
     const [addModalOpen, setAddModalOpen] = useState(false);
     const [newBusinessUnit, setNewBusinessUnit] = useState({
         businessunit_name: '',
+        businessunit_code: '',
         businessunit_image: null as File | null,
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -79,6 +81,7 @@ export default function BusinessUnitIndex({
     const [businessUnitToEdit, setBusinessUnitToEdit] = useState<BusinessUnit | null>(null);
     const [editFormData, setEditFormData] = useState({
         businessunit_name: '',
+        businessunit_code: '',
         businessunit_image: null as File | null, // Add this line
     });
 
@@ -282,6 +285,7 @@ export default function BusinessUnitIndex({
         setAddModalOpen(false);
         setNewBusinessUnit({
             businessunit_name: '',
+            businessunit_code: '',
             businessunit_image: null as File | null,
         });
         setErrors({});
@@ -323,6 +327,12 @@ export default function BusinessUnitIndex({
         // Create FormData to handle file upload
         const formData = new FormData();
         formData.append('businessunit_name', newBusinessUnit.businessunit_name);
+        
+        // Make sure this line is actually executed
+        if (newBusinessUnit.businessunit_code) {
+            formData.append('businessunit_code', newBusinessUnit.businessunit_code);
+            console.log('Added businessunit_code to form data:', newBusinessUnit.businessunit_code);
+        }
         
         // Only append image if it's selected
         if (newBusinessUnit.businessunit_image) {
@@ -366,7 +376,8 @@ export default function BusinessUnitIndex({
         
         setEditFormData({
             businessunit_name: businessUnit.businessunit_name,
-            businessunit_image: null, // Initialize as null
+            businessunit_code: businessUnit.businessunit_code || '',
+            businessunit_image: null,
         });
         
         setEditModalOpen(true);
@@ -378,6 +389,7 @@ export default function BusinessUnitIndex({
             setBusinessUnitToEdit(null);
             setEditFormData({
                 businessunit_name: '',
+                businessunit_code: '',
                 businessunit_image: null,
             });
             setErrors({});
@@ -851,6 +863,29 @@ export default function BusinessUnitIndex({
                                                     )}
                                                 </div>
 
+                                                {/* Add business unit code field */}
+                                                <div className="mt-4">
+                                                    <label htmlFor="businessunit_code" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                        Business Unit Code *
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        name="businessunit_code"
+                                                        id="businessunit_code"
+                                                        value={newBusinessUnit.businessunit_code}
+                                                        onChange={handleInputChange}
+                                                        placeholder="e.g., HR, IT, FIN"
+                                                        className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm
+                                                            ${errors.businessunit_code 
+                                                                ? 'border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-700' 
+                                                                : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700'
+                                                            } dark:bg-gray-800 dark:text-white`}
+                                                    />
+                                                    {errors.businessunit_code && (
+                                                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.businessunit_code}</p>
+                                                    )}
+                                                </div>
+
                                                 {/* Add image upload field */}
                                                 <div className="mt-4">
                                                     <label htmlFor="businessunit_image" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -982,6 +1017,29 @@ export default function BusinessUnitIndex({
                                                     />
                                                     {errors.businessunit_name && (
                                                         <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.businessunit_name}</p>
+                                                    )}
+                                                </div>
+                                                
+                                                {/* Add business unit code field */}
+                                                <div className="mt-4">
+                                                    <label htmlFor="edit_businessunit_code" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                        Business Unit Code *
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        name="businessunit_code"
+                                                        id="edit_businessunit_code"
+                                                        value={editFormData.businessunit_code}
+                                                        onChange={handleEditInputChange}
+                                                        placeholder="e.g., HR, IT, FIN"
+                                                        className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm
+                                                            ${errors.businessunit_code 
+                                                                ? 'border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-700' 
+                                                                : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700'
+                                                            } dark:bg-gray-800 dark:text-white`}
+                                                    />
+                                                    {errors.businessunit_code && (
+                                                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.businessunit_code}</p>
                                                     )}
                                                 </div>
                                                 

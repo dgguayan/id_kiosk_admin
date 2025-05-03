@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\TemplateImage;
 use App\Models\BusinessUnit;
+use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -106,6 +107,20 @@ class TemplateImagesController extends Controller
                 'image_path2' => $backImageName,
             ]);
 
+            // Log the template creation
+            ActivityLogService::log(
+                'template_created',
+                'Created a new ID template for business unit ID: ' . $request->businessunit_id,
+                'App\Models\TemplateImage',
+                $template->id,
+                [
+                    'businessunit_id' => $request->businessunit_id,
+                    'front_image' => $frontImageName,
+                    'back_image' => $backImageName,
+                    'created_by' => Auth::user()->name ?? 'System'
+                ]
+            );
+
             return redirect()->route('id-templates.index')->with('success', 'Template added successfully!');
 
         } catch (\Exception $e) {
@@ -156,6 +171,8 @@ class TemplateImagesController extends Controller
             ]);
 
             $template = TemplateImage::findOrFail($id);
+            $originalData = $template->toArray();
+            $changes = [];
 
             // Ensure the network directory exists
             if (!file_exists($this->networkPath)) {
@@ -174,6 +191,10 @@ class TemplateImagesController extends Controller
                 $frontImageName = uniqid() . '_' . time() . '.' . $frontImage->getClientOriginalExtension();
                 $frontImage->move($this->networkPath, $frontImageName);
                 
+                $changes['front_image'] = [
+                    'old' => $template->image_path,
+                    'new' => $frontImageName
+                ];
                 $template->image_path = $frontImageName;
             }
             
@@ -188,11 +209,33 @@ class TemplateImagesController extends Controller
                 $backImageName = uniqid() . '_' . time() . '.' . $backImage->getClientOriginalExtension();
                 $backImage->move($this->networkPath, $backImageName);
                 
+                $changes['back_image'] = [
+                    'old' => $template->image_path2,
+                    'new' => $backImageName
+                ];
                 $template->image_path2 = $backImageName;
             }
 
+            if ($template->businessunit_id != $request->businessunit_id) {
+                $changes['businessunit_id'] = [
+                    'old' => $template->businessunit_id,
+                    'new' => $request->businessunit_id
+                ];
+            }
             $template->businessunit_id = $request->businessunit_id;
             $template->save();
+
+            // Log the template update
+            ActivityLogService::log(
+                'template_updated',
+                'Updated ID template ID: ' . $id,
+                'App\Models\TemplateImage',
+                $template->id,
+                [
+                    'changes' => $changes,
+                    'updated_by' => Auth::user()->name ?? 'System'
+                ]
+            );
 
             return redirect()->route('id-templates.index')->with('success', 'Template updated successfully!');
             
@@ -216,22 +259,47 @@ class TemplateImagesController extends Controller
             abort(403, 'Only administrators can delete users.');
         }
         
-        $template = TemplateImage::findOrFail($id);
-        
-        // Delete images from network storage
-        $frontPath = $this->networkPath . $template->image_path;
-        $backPath = $this->networkPath . $template->image_path2;
-        
-        if (file_exists($frontPath)) {
-            unlink($frontPath);
-        }
-        
-        if (file_exists($backPath)) {
-            unlink($backPath);
-        }
+        try {
+            $template = TemplateImage::findOrFail($id);
+            $templateData = $template->toArray();
+            
+            // Delete images from network storage
+            $frontPath = $this->networkPath . $template->image_path;
+            $backPath = $this->networkPath . $template->image_path2;
+            
+            if (file_exists($frontPath)) {
+                unlink($frontPath);
+            }
+            
+            if (file_exists($backPath)) {
+                unlink($backPath);
+            }
 
-        $template->delete();
-        return redirect()->route('id-templates.index')->with('success', 'Template deleted successfully!');
+            $template->delete();
+
+            // Log the template deletion
+            ActivityLogService::log(
+                'template_deleted',
+                'Deleted ID template ID: ' . $id,
+                'App\Models\TemplateImage',
+                $id,
+                [
+                    'template_data' => $templateData,
+                    'deleted_by' => Auth::user()->name ?? 'System',
+                    'user_role' => Auth::user()->role
+                ]
+            );
+
+            return redirect()->route('id-templates.index')->with('success', 'Template deleted successfully!');
+        } catch (\Exception $e) {
+            Log::error('Error deleting template: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->route('id-templates.index')->with('error', 'An error occurred while deleting the template: ' . $e->getMessage());
+        }
     }
     
     /**
@@ -305,9 +373,23 @@ class TemplateImagesController extends Controller
             
             // Find the specific template to update
             $template = TemplateImage::findOrFail($id);
+            $originalPositions = $template->only(array_keys($validated));
             
             // Update the template with new positions
             $template->update($validated);
+            
+            // Log the template positions update
+            ActivityLogService::log(
+                'template_positions_updated',
+                'Updated ID template layout positions for template ID: ' . $id,
+                'App\Models\TemplateImage',
+                $template->id,
+                [
+                    'old_positions' => $originalPositions,
+                    'new_positions' => $validated,
+                    'updated_by' => Auth::user()->name ?? 'System'
+                ]
+            );
             
             // Return an Inertia redirect response with flash message
             return back()->with('success', 'Template layout positions updated successfully');

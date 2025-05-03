@@ -429,75 +429,75 @@ export default function ActivityLogIndex({
                 open={isModalOpen}
                 onOpenChange={closeLogDetailsModal}
             >
-                <DialogContent className="sm:max-w-4xl">
+                <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
                     <DialogHeader>
                         <DialogTitle>Activity Log Details</DialogTitle>
                     </DialogHeader>
                     {selectedLog && (
-                        <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Date & Time</h3>
-                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{formatDateTime(selectedLog.created_at)}</p>
-                            </div>
-                            
-                            <div>
-                                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">User</h3>
-                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedLog.user ? selectedLog.user.name : 'System'}</p>
-                            </div>
-                            
-                            <div>
-                                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Activity Type</h3>
-                                <p className="mt-1">
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getActionBadgeColor(selectedLog.action)}`}>
-                                        {formatActionType(selectedLog.action)}
-                                    </span>
-                                </p>
-                            </div>
-                            
-                            <div>
-                                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">IP Address</h3>
-                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedLog.ip_address || '-'}</p>
-                            </div>
-                            
-                            <div className="md:col-span-2">
-                                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Description</h3>
-                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedLog.description || '-'}</p>
-                            </div>
-                            
-                            {selectedLog.model_type && (
-                                <div className="md:col-span-2">
-                                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Related Resource</h3>
-                                    <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                                        {selectedLog.model_type.split('\\').pop()} ID: {selectedLog.model_id || '-'}
+                        <div className="space-y-4 overflow-y-auto flex-1 pr-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Date & Time</h3>
+                                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{formatDateTime(selectedLog.created_at)}</p>
+                                </div>
+                                
+                                <div>
+                                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">User</h3>
+                                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedLog.user ? selectedLog.user.name : 'System'}</p>
+                                </div>
+                                
+                                <div>
+                                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Activity Type</h3>
+                                    <p className="mt-1">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getActionBadgeColor(selectedLog.action)}`}>
+                                            {formatActionType(selectedLog.action)}
+                                        </span>
                                     </p>
                                 </div>
-                            )}
-                            
-                            <div className="md:col-span-2">
-                                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">User Agent</h3>
-                                <p className="mt-1 text-sm text-gray-900 dark:text-white max-h-20 overflow-y-auto">
-                                    {selectedLog.user_agent || '-'}
-                                </p>
-                            </div>
-
-                            {selectedLog.properties && (
-                                <div className="md:col-span-2">
-                                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Additional Data</h3>
-                                    <pre className="mt-1 text-xs text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 p-3 rounded-md overflow-x-auto">
-                                        {JSON.stringify(selectedLog.properties, null, 2)}
-                                    </pre>
+                                
+                                <div>
+                                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">IP Address</h3>
+                                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedLog.ip_address || '-'}</p>
                                 </div>
-                            )}
-                        </div>
+                                
+                                <div className="md:col-span-2">
+                                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Description</h3>
+                                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedLog.description || '-'}</p>
+                                </div>
+                                
+                                {selectedLog.model_type && (
+                                    <div className="md:col-span-2">
+                                        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Related Resource</h3>
+                                        <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                                            {selectedLog.model_type.split('\\').pop()} ID: {selectedLog.model_id || '-'}
+                                        </p>
+                                    </div>
+                                )}
+                                
+                                <div className="md:col-span-2">
+                                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">User Agent</h3>
+                                    <p className="mt-1 text-sm text-gray-900 dark:text-white max-h-20 overflow-y-auto">
+                                        {selectedLog.user_agent || '-'}
+                                    </p>
+                                </div>
 
-                        <div className="mt-5 sm:mt-6 flex justify-end">
-                            <Button variant="outline" onClick={closeLogDetailsModal}>
-                                Close
-                            </Button>
+                                {selectedLog.properties && (
+                                    <div className="md:col-span-2">
+                                        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Additional Data</h3>
+                                        <pre className="mt-1 text-xs text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 p-3 rounded-md overflow-x-auto">
+                                            {JSON.stringify(selectedLog.properties, null, 2)}
+                                        </pre>
+                                    </div>
+                                )}
+                            </div>
                         </div>
+                    )}
+
+                    <div className="mt-5 sm:mt-6 flex justify-end">
+                        <Button variant="outline" onClick={closeLogDetailsModal}>
+                            Close
+                        </Button>
                     </div>
-                )}
                 </DialogContent>
             </Dialog>
 
