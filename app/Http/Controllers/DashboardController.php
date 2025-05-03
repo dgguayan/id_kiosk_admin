@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Inertia\Inertia;
 use App\Models\BusinessUnit;
 use App\Models\Employee;
+use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
@@ -35,6 +36,29 @@ class DashboardController extends Controller
             ];
         });
 
+        // Get the top 5 employees with expired or soon-to-expire IDs
+        $expiringIDs = Employee::whereNotNull('id_last_exported_at')
+            ->select(['uuid', 'employee_firstname', 'employee_middlename', 'employee_lastname', 
+                    'employee_name_extension', 'businessunit_id', 'id_last_exported_at'])
+            ->with(['businessUnit:businessunit_id,businessunit_name'])
+            ->get()
+            ->map(function ($employee) {
+                // Calculate expiry date (2 years after export)
+                $exportDate = Carbon::parse($employee->id_last_exported_at);
+                $expiryDate = (clone $exportDate)->addYears(2);
+                $daysRemaining = Carbon::now()->diffInDays($expiryDate, false);
+
+                $employee->days_remaining = $daysRemaining;
+                $employee->businessunit_name = $employee->businessUnit ? 
+                    $employee->businessUnit->businessunit_name : 'Unknown';
+                
+                return $employee;
+            })
+            ->sortBy('days_remaining') // Sort by days remaining (most urgent first)
+            ->take(5) // Get only top 5
+            ->values()
+            ->toArray();
+
         $dashboardData = [
             'totalEmployees' => $totalEmployees,
             'pendingIDs' => $pendingIDs,
@@ -44,6 +68,7 @@ class DashboardController extends Controller
 
         return Inertia::render('dashboard', [
             'dashboardData' => $dashboardData,
+            'expiringIDs' => $expiringIDs
         ]);
     }
 }
