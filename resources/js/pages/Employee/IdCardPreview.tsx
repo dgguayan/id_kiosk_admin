@@ -747,7 +747,11 @@ const IdCardPreview: React.FC<IdCardPreviewProps> = ({ employee, templateImages,
         try {
             console.log(`Attempting to update ID status for employee UUID: ${employeeUuid}`);
             
-            const response = await axios.post(route('employee.update-id-status', { uuid: employeeUuid }));
+            // Updated to include setting the id_last_exported_at to current date
+            const response = await axios.post(route('employee.update-id-status', { 
+                uuid: employeeUuid,
+                id_last_exported_at: new Date().toISOString() // Add current date in ISO format
+            }));
             
             console.log('ID status update response:', response);
             

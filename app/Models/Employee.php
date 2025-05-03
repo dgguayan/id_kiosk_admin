@@ -61,6 +61,7 @@ class Employee extends Model
         'image_person',
         'image_signature',
         'image_qrcode',
+        'id_last_exported_at',
     ];
 
     /**

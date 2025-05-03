@@ -29,46 +29,54 @@ class EmployeeController extends Controller
         $sortField = $request->input('sort_by', 'employee_lastname');
         $sortDirection = $request->input('sort_direction', 'asc');
         $businessUnitId = $request->input('businessunit_id');
+        $perPage = $request->get('per_page', 10);
         
         $query = Employee::with('businessUnit');
         
-        // Apply search if provided
         if ($search) {
             $query->where(function($q) use ($search) {
                 $q->where('employee_firstname', 'like', "%{$search}%")
                     ->orWhere('employee_lastname', 'like', "%{$search}%")
                     ->orWhere('employee_middlename', 'like', "%{$search}%")
                     ->orWhere('id_no', 'like', "%{$search}%")
+                    ->orWhere('position', 'like', "%{$search}%")
                     ->orWhereHas('businessUnit', function ($bq) use ($search) {
                         $bq->where('businessunit_name', 'like', "%{$search}%");
                     });
             });
         }
         
-        // Apply business unit filter if provided
         if ($businessUnitId) {
             $query->where('businessunit_id', $businessUnitId);
         }
         
-        // Map virtual field to actual column for sorting
-        if ($sortField === 'businessunit_name') {
-            // Use the actual foreign key column for sorting
+        // Special handling for date fields
+        if ($sortField === 'id_last_exported_at') {
+            // Handle nulls - in MySQL nulls are sorted differently than in JavaScript
+            if ($sortDirection === 'asc') {
+                // Sort nulls last when ascending
+                $query->orderByRaw("COALESCE(id_last_exported_at, '9999-12-31') $sortDirection");
+            } else {
+                // Sort nulls first when descending
+                $query->orderByRaw("COALESCE(id_last_exported_at, '1000-01-01') $sortDirection");
+            }
+        } else if ($sortField === 'businessunit_name') {
             $sortField = 'businessunit_id';
+            $query->orderBy($sortField, $sortDirection);
+        } else {
+            // Regular sorting for other fields
+            $query->orderBy($sortField, $sortDirection);
         }
         
         $employees = $query
-            ->orderBy($sortField, $sortDirection)
-            ->paginate(10)
+            ->paginate($perPage)
             ->withQueryString();
         
-        // Transform the employees to include business unit name
         $transformedEmployees = collect($employees->items())->map(function ($employee) {
-            // Add the business unit name to each employee
             $employee->businessunit_name = $employee->businessUnit ? $employee->businessUnit->businessunit_name : null;
             return $employee;
         });
         
-        // Fetch business units for the dropdown - use the correct primary key field
         $businessUnits = BusinessUnit::orderBy('businessunit_name')
             ->get(['businessunit_id AS id', 'businessunit_name']);
         
@@ -87,12 +95,12 @@ class EmployeeController extends Controller
                 'search' => $search,
                 'businessunit_id' => $businessUnitId,
                 'page' => $request->input('page', 1),
-                'per_page' => 10,
+                'per_page' => $perPage,
                 'sort_by' => $sortField === 'businessunit_id' ? 'businessunit_name' : $sortField,
                 'sort_direction' => $sortDirection,
             ],
-            'businessUnits' => $businessUnits, // Pass business units for the dropdown
-            'currentUserRole' => $currentUserRole, // Pass the current user role
+            'businessUnits' => $businessUnits,
+            'currentUserRole' => $currentUserRole,
         ]);
     }
 
@@ -134,14 +142,12 @@ class EmployeeController extends Controller
         ]);
         
         try {
-            // Get the maximum id_no value directly instead of employee_id_counter
+
             $maxIdNo = Employee::max('id_no') ?? 0;
             $newIdNo = (int)$maxIdNo + 1;
             
-            // Generate the ID with 6-digit zero-padded format
             $idNo = str_pad($newIdNo, 6, '0', STR_PAD_LEFT);
             
-            // Create the new employee within a transaction
             DB::transaction(function () use ($validated, $idNo, $request) {
                 $employee = new Employee();
                 $employee->id_no = $idNo;
@@ -161,14 +167,12 @@ class EmployeeController extends Controller
                 $employee->emergency_contact_number = $validated['emergency_contact_number'] ?? null;
                 $employee->emergency_address = $validated['emergency_address'] ?? null;
                 $employee->employment_status = $validated['employment_status'];
-                $employee->employee_id_counter = 1; // Always set to 1
+                $employee->employee_id_counter = 0;
                 $employee->uuid = \Illuminate\Support\Str::uuid();
                 $employee->id_status = $validated['id_status'] ?? 'pending';
                 
-                // Add current date as date_hired
                 $employee->date_hired = now()->format('Y-m-d');
                 
-                // Handle image uploads if present
                 if ($request->hasFile('image_person')) {
                     $file = $request->file('image_person');
                     $imagePersonFilename = time() . '_' . $file->getClientOriginalName();
@@ -177,7 +181,6 @@ class EmployeeController extends Controller
                         mkdir($networkPath, 0777, true);
                     }
                     $file->move($networkPath, $imagePersonFilename);
-                    // Store just the filename in the database
                     $employee->image_person = $imagePersonFilename;
                 }
                 
@@ -189,7 +192,6 @@ class EmployeeController extends Controller
                         mkdir($networkPath, 0777, true);
                     }
                     $file->move($networkPath, $imageSignatureFilename);
-                    // Store the full network path in the database
                     $employee->image_signature = $imageSignatureFilename;
                 }
                 
@@ -201,7 +203,6 @@ class EmployeeController extends Controller
                         mkdir($networkPath, 0777, true);
                     }
                     $file->move($networkPath, $imageQRCodeFilename);
-                    // Store the full network path in the database
                     $employee->image_qrcode = $imageQRCodeFilename;
                 }
                 
@@ -210,7 +211,7 @@ class EmployeeController extends Controller
             
             $fullName = $validated['employee_firstname'] . ' ' . $validated['employee_lastname'];
             
-            // Log the activity
+            // Log activity
             ActivityLogService::log(
                 'employee_created',
                 "Employee {$fullName} was created",
@@ -219,7 +220,6 @@ class EmployeeController extends Controller
                 ['name' => $fullName, 'position' => $validated['position']]
             );
             
-            // Return a JSON response for API requests
             if ($request->wantsJson()) {
                 return response()->json([
                     'message' => "Employee {$fullName} has been added successfully.",
@@ -227,11 +227,9 @@ class EmployeeController extends Controller
                 ], 201);
             }
             
-            // Return a redirect response for web requests
             return redirect()->route('employee.index')->with('success', "Employee {$fullName} has been added successfully.");
         } catch (\Exception $e) {
             Log::error('Failed to add employee: ' . $e->getMessage());
-            // Handle errors and return appropriate response
             if ($request->wantsJson()) {
                 return response()->json(['error' => 'Failed to add employee: ' . $e->getMessage()], 500);
             }
@@ -952,13 +950,13 @@ class EmployeeController extends Controller
     /**
      * Update the employee's ID status to printed and increment the employee ID counter
      *
-     * @param  int  $uuid
+     * @param  \Illuminate\Http\Request  $request
+     * @param  string  $uuid
      * @return \Illuminate\Http\Response
      */
-    public function updateIdStatus($uuid)
+    public function updateIdStatus(Request $request, $uuid)
     {
         try {
-            
             DB::beginTransaction();
             
             $employee = Employee::where('uuid', $uuid)->firstOrFail();
@@ -971,6 +969,10 @@ class EmployeeController extends Controller
             } else {
                 $employee->employee_id_counter = 1;
             }
+            
+            // Always update the last exported date whenever an ID is exported
+            // This ensures the 2-year expiry calculation will work correctly
+            $employee->id_last_exported_at = now();
             
             $employee->save();
             

@@ -33,6 +33,7 @@ interface Employee {
     employment_status: string;
     position: string;
     employee_id_counter: number;
+    id_last_exported_at?: string | null; // Add this field
     image_person?: string | null;
     image_signature?: string | null;
     image_qrcode?: string | null;
@@ -560,6 +561,18 @@ export default function Employee({
                                     </div>
                                 </Table.Cell>
                                 <Table.Cell header>
+                                    <div className='cursor-pointer flex justify-center items-center' onClick={() => handleSort('id_last_exported_at')}>
+                                        <span>ID Expiry</span>
+                                        <span className="ml-1 flex-shrink-0 w-4">
+                                            {sortField === 'id_last_exported_at' && (
+                                                sortOrder === 'asc' 
+                                                    ? <ChevronUp className="h-4 w-4" /> 
+                                                    : <ChevronDown className="h-4 w-4" />
+                                            )}
+                                        </span>
+                                    </div>
+                                </Table.Cell>
+                                <Table.Cell header>
                                     <div className="text-center">Actions</div>
                                 </Table.Cell>
                             </tr>
@@ -599,6 +612,47 @@ export default function Employee({
                                         </span>
                                     </Table.Cell>
                                     <Table.Cell className='text-center'>{employee.employee_id_counter}</Table.Cell>
+                                    <Table.Cell className='text-center'>
+                                        {employee.id_last_exported_at ? (
+                                            <div className="flex flex-col items-center">
+                                                {(() => {
+                                                    const exportDate = new Date(employee.id_last_exported_at);
+                                                    const expiryDate = new Date(exportDate);
+                                                    expiryDate.setFullYear(expiryDate.getFullYear() + 2);
+                                                    
+                                                    const today = new Date();
+                                                    const daysRemaining = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                                                    
+                                                    const formattedExportDate = exportDate.toLocaleDateString();
+                                                    const formattedExpiryDate = expiryDate.toLocaleDateString();
+                                                    
+                                                    return (
+                                                        <>
+                                                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                                                                Exported: {formattedExportDate}
+                                                            </div>
+                                                            <div className="text-xs mt-1">
+                                                                Expires: {formattedExpiryDate}
+                                                            </div>
+                                                            <div className={`mt-1 px-2 py-1 rounded-full text-xs font-medium ${
+                                                                daysRemaining > 30 
+                                                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
+                                                                    : daysRemaining > 0 
+                                                                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' 
+                                                                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                                                            }`}>
+                                                                {daysRemaining > 0 
+                                                                    ? `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining` 
+                                                                    : 'Expired'}
+                                                            </div>
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
+                                        ) : (
+                                            <span className="text-gray-500 dark:text-gray-400">Never exported</span>
+                                        )}
+                                    </Table.Cell>
                                     <Table.Cell className='text-center'>
                                         <div className="flex justify-center space-x-2">
                                             <button 
