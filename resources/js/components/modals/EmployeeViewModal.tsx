@@ -103,7 +103,7 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({
                                                 filename: employee.image_person
                                             })}
                                         alt={`${employee.employee_firstname} ${employee.employee_lastname}`}
-                                        className="h-36 w-36 rounded-full object-cover border-2 border-gray-200"
+                                        className="h-36 w-36 rounded-md object-cover border-2 border-gray-200"
                                         onError={(e) => {
                                             e.currentTarget.style.display = 'none';
                                             const parent = e.currentTarget.parentElement;

@@ -638,7 +638,7 @@ export default function PendingId({
                                                 <span className="sr-only">View {employee.employee_firstname}</span>
                                             </button>
                                             <button 
-                                                className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                                className="text-yellow-600 hover:text-yellow-900 dark:text-indigo-400 dark:hover:text-indigo-300"
                                                 onClick={() => openEditModal(employee)}
                                                 title="Edit Employee"
                                             >
