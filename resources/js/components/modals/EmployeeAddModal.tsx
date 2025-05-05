@@ -521,7 +521,7 @@ const EmployeeAddModal: React.FC<EmployeeAddModalProps> = ({
                                     
                                     <div>
                                         <label htmlFor="hdmf_no" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            Pag-IBIG Number
+                                            HDMF Number
                                         </label>
                                         <input
                                             type="text"
