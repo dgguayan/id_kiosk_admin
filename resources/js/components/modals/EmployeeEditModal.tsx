@@ -365,7 +365,7 @@ const EmployeeEditModal: React.FC<EmployeeEditModalProps> = ({
                                                             filename: editFilePreviews.image_qrcode
                                                         })} 
                                                     alt="QR Code preview" 
-                                                    className="h-40 w-40 object-contain rounded-md border border-gray-300 dark:border-gray-600"
+                                                    className="h-28 w-28 object-contain rounded-md border border-gray-300 dark:border-gray-600"
                                                     onError={(e) => {
                                                         e.currentTarget.onerror = null;
                                                         e.currentTarget.src = route('employee.placeholder-image');
@@ -403,7 +403,7 @@ const EmployeeEditModal: React.FC<EmployeeEditModalProps> = ({
                                 <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
                                     Personal Information
                                 </h4>
-                                <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4">
+                                <div className="grid grid-cols-1 gap-y-1 sm:grid-cols-2 sm:gap-x-4">
                                     <div>
                                         <label htmlFor="edit_employee_firstname" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                             First Name *
@@ -489,7 +489,7 @@ const EmployeeEditModal: React.FC<EmployeeEditModalProps> = ({
                                         />
                                     </div>
                                     
-                                    <div className="sm:col-span-2">
+                                    <div>
                                         <label htmlFor="edit_address" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                             Address
                                         </label>
@@ -509,7 +509,7 @@ const EmployeeEditModal: React.FC<EmployeeEditModalProps> = ({
                                 <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
                                     Employment Information
                                 </h4>
-                                <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4">
+                                <div className="grid grid-cols-1 gap-y-1 sm:grid-cols-2 sm:gap-x-4">
                                     <div>
                                         <label htmlFor="edit_position" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                             Position *
@@ -597,7 +597,7 @@ const EmployeeEditModal: React.FC<EmployeeEditModalProps> = ({
                                 <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
                                     Government IDs
                                 </h4>
-                                <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4">
+                                <div className="grid grid-cols-1 gap-y-1 sm:grid-cols-2 sm:gap-x-4">
                                     <div>
                                         <label htmlFor="edit_tin_no" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                             TIN Number
@@ -660,7 +660,7 @@ const EmployeeEditModal: React.FC<EmployeeEditModalProps> = ({
                                 <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
                                     Emergency Contact
                                 </h4>
-                                <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4">
+                                <div className="grid grid-cols-1 gap-y-1 sm:grid-cols-2 sm:gap-x-4">
                                     <div>
                                         <label htmlFor="edit_emergency_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                             Contact Name
@@ -719,7 +719,7 @@ const EmployeeEditModal: React.FC<EmployeeEditModalProps> = ({
                         <button
                             type="submit"
                             disabled={isEditing}
-                            className="ml-3 inline-flex justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-indigo-700 dark:hover:bg-indigo-800"
+                            className="ml-1 inline-flex justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-indigo-700 dark:hover:bg-indigo-800"
                         >
                             {isEditing ? (
                                 <>
