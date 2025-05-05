@@ -240,7 +240,7 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({
                                 </div>
                                 
                                 <div className="sm:col-span-1">
-                                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Pag-IBIG Number</dt>
+                                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">HDMF Number</dt>
                                     <dd className="mt-1 text-sm text-gray-900 dark:text-white">
                                         {employee.hdmf_no || 'Not specified'}
                                     </dd>

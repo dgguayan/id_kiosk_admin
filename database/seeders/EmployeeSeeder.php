@@ -44,7 +44,7 @@ class EmployeeSeeder extends Seeder
             $nameExtension = $faker->optional(0.2)->randomElement(['Jr.', 'Sr.', 'II', 'III', 'IV']);
             
             // Generate a realistic ID number (e.g., EMP-2025-0001)
-            $employeeIdCounter = 1;
+            $employeeIdCounter = 0;
             $idNo = 'EMP-' . date('Y') . '-' . str_pad($i + 1, 4, '0', STR_PAD_LEFT);
             
             // Random date in the past 5 years

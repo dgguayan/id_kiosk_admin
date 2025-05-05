@@ -174,7 +174,7 @@ export default function IdTemplateLayout({
         emp_bday: { label: 'Birthdate', side: 'back' },
         emp_sss: { label: 'SSS', side: 'back' },
         emp_phic: { label: 'PhilHealth', side: 'back' },
-        emp_hdmf: { label: 'Pag-IBIG', side: 'back' },
+        emp_hdmf: { label: 'HDMF', side: 'back' },
         emp_tin: { label: 'TIN', side: 'back' },
         emp_emergency_name: { label: 'Emergency Contact', side: 'back' },
         emp_emergency_num: { label: 'Emergency Number', side: 'back' },
@@ -389,15 +389,15 @@ export default function IdTemplateLayout({
         } else if (element === 'emp_add') {
             sampleText = "123 Sample Street, City";
         } else if (element === 'emp_bday') {
-            sampleText = "Month Day, Year";
+            sampleText = "Birthdate: Month Day, Year";
         } else if (element === 'emp_sss') {
-            sampleText = "12-3456789-0";
+            sampleText = "SSS: 12-3456789-0";
         } else if (element === 'emp_phic') {
-            sampleText = "98-7654321-0";
+            sampleText = "PHIC: 98-7654321-0";
         } else if (element === 'emp_hdmf') {
-            sampleText = "1234-5678-9012";
+            sampleText = "HDMF: 1234-5678-9012";
         } else if (element === 'emp_tin') {
-            sampleText = "123-456-789-000";
+            sampleText = "TIN: 123-456-789-000";
         } else if (element === 'emp_emergency_name') {
             sampleText = "Emergency Contact";
         } else if (element === 'emp_emergency_num') {
@@ -790,7 +790,6 @@ export default function IdTemplateLayout({
             ctx.font = '18px "Calibri", "Roboto", sans-serif';
         }
 
-        // Determine sample text based on element type
         let sampleText = elementMeta[element].label;
         if (element === 'emp_name') {
             sampleText = "Employee Name";
@@ -803,15 +802,15 @@ export default function IdTemplateLayout({
         } else if (element === 'emp_add') {
             sampleText = "123 Sample Street, City";
         } else if (element === 'emp_bday') {
-            sampleText = "Month Day, Year";
+            sampleText = "Birthdate: Month Day, Year";
         } else if (element === 'emp_sss') {
-            sampleText = "12-3456789-0";
+            sampleText = "SSS: 12-3456789-0";
         } else if (element === 'emp_phic') {
-            sampleText = "98-7654321-0";
+            sampleText = "PHIC: 98-7654321-0";
         } else if (element === 'emp_hdmf') {
-            sampleText = "1234-5678-9012";
+            sampleText = "HDMF: 1234-5678-9012";
         } else if (element === 'emp_tin') {
-            sampleText = "123-456-789-000";
+            sampleText = "TIN: 123-456-789-000";
         } else if (element === 'emp_emergency_name') {
             sampleText = "Emergency Contact";
         } else if (element === 'emp_emergency_num') {
@@ -820,7 +819,6 @@ export default function IdTemplateLayout({
             sampleText = "456 Emergency Address, City";
         }
 
-        // For elements that are centered in IdCardPreview, make sure they're centered here too
         if (element === 'emp_name' || element === 'emp_pos' || element === 'emp_idno') {
             ctx.textAlign = "center";
         } else if (backTextElements.includes(element)) {
@@ -829,9 +827,7 @@ export default function IdTemplateLayout({
         
         ctx.textBaseline = "middle";
 
-        // Handle different element types
         if (element === 'emp_img' || element === 'emp_qrcode') {
-            // For images and QR codes, keep the existing fixed size rectangle
             ctx.fillStyle = color;
             ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
             ctx.strokeStyle = '#000';
