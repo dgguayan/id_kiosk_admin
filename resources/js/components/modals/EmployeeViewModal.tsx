@@ -162,58 +162,62 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({
                     
                     {/* Right column - Information */}
                     <div className="md:w-2/3">
-                        {/* Basic Information */}
-                        <div className="mb-6">
-                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                                {employee.employee_lastname}, {employee.employee_firstname} {employee.employee_middlename ? employee.employee_middlename[0] + '.' : ''} {employee.employee_name_extension}
-                            </h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-300">{employee.position}</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">ID No: {employee.id_no}</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Business Unit: {employee.businessunit_name}</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Status: <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                    employee.employment_status.toLowerCase() === 'active' 
-                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
-                                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                                }`}>{employee.employment_status}</span>
-                            </p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                ID Status: <span className={`font-medium ${
-                                    employee.id_status === 'pending' 
-                                    ? 'text-amber-600 dark:text-amber-400' 
-                                    : 'text-green-600 dark:text-green-400'
-                                }`}>
-                                    {employee.id_status ? employee.id_status.charAt(0).toUpperCase() + employee.id_status.slice(1) : 'Not Set'}
-                                </span>
-                            </p>
+                        <div className="mb-2 flex flex-col md:flex-row md:gap-6">
+                            {/* Basic Information */}
+                            <div className="md:w-1/2">
+                                <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    {employee.employee_lastname}, {employee.employee_firstname} {employee.employee_middlename ? employee.employee_middlename[0] + '.' : ''} {employee.employee_name_extension}
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-300">{employee.position}</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">ID No: {employee.id_no}</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Business Unit: {employee.businessunit_name}</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    Status: <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                        employee.employment_status.toLowerCase() === 'active' 
+                                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
+                                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                                    }`}>{employee.employment_status}</span>
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    ID Status: <span className={`font-medium ${
+                                        employee.id_status === 'pending' 
+                                        ? 'text-amber-600 dark:text-amber-400' 
+                                        : 'text-green-600 dark:text-green-400'
+                                    }`}>
+                                        {employee.id_status ? employee.id_status.charAt(0).toUpperCase() + employee.id_status.slice(1) : 'Not Set'}
+                                    </span>
+                                </p>
+                            </div>
+
+                            {/* Personal Information */}
+                            <div className="md:w-1/2 mt-4 md:mt-0">
+                                <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">
+                                    Personal Information
+                                </h4>
+                                <dl className="grid grid-cols-1 gap-x-4 gap-y-3">
+                                    <div>
+                                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Birthday</dt>
+                                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                                            {employee.birthday ? 
+                                                new Date(employee.birthday).toLocaleDateString() : 
+                                                'Not specified'}
+                                        </dd>
+                                    </div>
+                                    
+                                    <div>
+                                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Address</dt>
+                                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                                            {employee.address || 'Not specified'}
+                                        </dd>
+                                    </div>
+                                </dl>
+                            </div>
                         </div>
                         
-                        {/* Personal Information */}
-                        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-6">
-                            <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">
-                                Personal Information
-                            </h4>
-                            <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-                                <div className="sm:col-span-1">
-                                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Birthday</dt>
-                                    <dd className="mt-1 text-sm text-gray-900 dark:text-white">
-                                        {employee.birthday ? 
-                                            new Date(employee.birthday).toLocaleDateString() : 
-                                            'Not specified'}
-                                    </dd>
-                                </div>
-                                
-                                <div className="sm:col-span-2">
-                                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Address</dt>
-                                    <dd className="mt-1 text-sm text-gray-900 dark:text-white">
-                                        {employee.address || 'Not specified'}
-                                    </dd>
-                                </div>
-                            </dl>
-                        </div>
+                        
                         
                         {/* Government IDs */}
-                        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-6">
+                        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-2">
                             <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">
                                 Government IDs
                             </h4>
@@ -291,7 +295,7 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({
                     )}
                     <button
                         type="button"
-                        className="inline-flex w-full justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 sm:ml-3 sm:w-auto"
+                        className="inline-flex w-full justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 sm:ml sm:w-auto"
                         onClick={() => {
                             onClose();
                             router.visit(route('employee.id-preview', employee.uuid));
