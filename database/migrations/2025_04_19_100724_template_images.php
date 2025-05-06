@@ -67,6 +67,11 @@ return new class extends Migration
             $table->integer('emp_qrcode_width')->nullable();
             $table->integer('emp_qrcode_height')->nullable();
 
+            $table->integer('emp_back_idno_x')->nullable();
+            $table->integer('emp_back_idno_y')->nullable();
+
+            $table->json('hidden_elements')->nullable();
+            
             $table->timestamps();
 
             // Foreign Key Constraint - Ensure business_units table exists

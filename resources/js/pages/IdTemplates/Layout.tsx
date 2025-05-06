@@ -2,7 +2,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Save, AlignCenter, Move, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Save, AlignCenter, Move, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
 
 interface TemplateCoordinates {
     // Front elements
@@ -42,6 +42,8 @@ interface TemplateCoordinates {
     emp_emergency_num_y: number;
     emp_emergency_add_x: number;
     emp_emergency_add_y: number;
+    emp_back_idno_x: number;
+    emp_back_idno_y: number;
 }
 
 interface TemplateImages {
@@ -49,6 +51,7 @@ interface TemplateImages {
     businessunit_id: number;
     image_path: string;
     image_path2: string;
+    hidden_elements?: string[] | string;
 }
 
 interface LayoutProps {
@@ -74,7 +77,8 @@ type ElementType =
     | 'emp_tin'
     | 'emp_emergency_name'
     | 'emp_emergency_num'
-    | 'emp_emergency_add';
+    | 'emp_emergency_add'
+    | 'emp_back_idno';
 
 // Element metadata for rendering
 interface ElementMeta {
@@ -139,6 +143,8 @@ export default function IdTemplateLayout({
         emp_emergency_num_y: template.emp_emergency_num_y ?? 681,
         emp_emergency_add_x: template.emp_emergency_add_x ?? 325,
         emp_emergency_add_y: template.emp_emergency_add_y ?? 739,
+        emp_back_idno_x: template.emp_back_idno_x ?? 325,
+        emp_back_idno_y: template.emp_back_idno_y ?? 400,
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -162,6 +168,28 @@ export default function IdTemplateLayout({
     const [isResizing, setIsResizing] = useState(false);
     const [resizeCorner, setResizeCorner] = useState<'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight' | null>(null);
 
+    // Hidden elements state
+    const [hiddenElements, setHiddenElements] = useState<Set<ElementType>>(() => {
+        // Check if template has hidden_elements property and parse it
+        if (template.hidden_elements) {
+            try {
+                // It could be already parsed or still a JSON string
+                const hiddenElementsArray = typeof template.hidden_elements === 'string' 
+                    ? JSON.parse(template.hidden_elements) 
+                    : template.hidden_elements;
+                    
+                // Make sure it's an array before converting to Set
+                if (Array.isArray(hiddenElementsArray)) {
+                    console.log("Loaded hidden elements from server:", hiddenElementsArray);
+                    return new Set(hiddenElementsArray as ElementType[]);
+                }
+            } catch (err) {
+                console.error("Error parsing hidden elements:", err);
+            }
+        }
+        return new Set();
+    });
+
     // Element metadata lookup
     const elementMeta: Record<ElementType, ElementMeta> = {
         emp_img: { label: 'Photo', side: 'front', width: coordinates.emp_img_width, height: coordinates.emp_img_height },
@@ -179,6 +207,7 @@ export default function IdTemplateLayout({
         emp_emergency_name: { label: 'Emergency Contact', side: 'back' },
         emp_emergency_num: { label: 'Emergency Number', side: 'back' },
         emp_emergency_add: { label: 'Emergency Address', side: 'back' },
+        emp_back_idno: { label: 'ID Number (Back)', side: 'back' },
     };
 
     // Get network image URL function
@@ -268,6 +297,14 @@ export default function IdTemplateLayout({
         }
     }, [coordinates, imagesLoaded, isDragging, draggedElement]);
 
+    // NEW effect: Redraw canvases when hidden elements change
+    useEffect(() => {
+        if (imagesLoaded) {
+            drawFrontCanvas();
+            drawBackCanvas();
+        }
+    }, [hiddenElements]);
+
     // Helper to get element bounds for hit testing
     const getElementBounds = (element: ElementType) => {
         const x = coordinates[`${element}_x` as keyof TemplateCoordinates] as number;
@@ -317,7 +354,7 @@ export default function IdTemplateLayout({
         // These are elements that should be left-aligned in the ID card
         const backTextElements = [
             'emp_add', 'emp_bday', 'emp_sss', 'emp_phic', 'emp_hdmf', 'emp_tin',
-            'emp_emergency_name', 'emp_emergency_num', 'emp_emergency_add'
+            'emp_emergency_name', 'emp_emergency_num', 'emp_emergency_add', 'emp_back_idno'
         ];
         
         if (backTextElements.includes(element)) {
@@ -345,6 +382,9 @@ export default function IdTemplateLayout({
 
     // Update the isPointInElement function to use the actual visual bounds
     const isPointInElement = (element: ElementType, x: number, y: number) => {
+        // Skip hidden elements
+        if (hiddenElements.has(element)) return false;
+        
         const bounds = getElementBounds(element);
         
         // For standard image elements, use the full rectangle
@@ -361,7 +401,7 @@ export default function IdTemplateLayout({
         // Set font based on element type
         const backTextElements = [
             'emp_add', 'emp_bday', 'emp_sss', 'emp_phic', 'emp_hdmf', 'emp_tin',
-            'emp_emergency_name', 'emp_emergency_num', 'emp_emergency_add'
+            'emp_emergency_name', 'emp_emergency_num', 'emp_emergency_add', 'emp_back_idno'
         ];
         
         if (element === 'emp_name') {
@@ -384,6 +424,8 @@ export default function IdTemplateLayout({
             sampleText = "Position";
         } else if (element === 'emp_idno') {
             sampleText = "IDNO";
+        } else if (element === 'emp_back_idno') { // Add this case
+            sampleText = "Back IDNO";
         } else if (element === 'emp_sig') {
             sampleText = "Employee Signature";
         } else if (element === 'emp_add') {
@@ -625,7 +667,7 @@ export default function IdTemplateLayout({
                 // For back text elements, convert from center to left alignment
                 const backTextElements = [
                     'emp_add', 'emp_bday', 'emp_sss', 'emp_phic', 'emp_hdmf', 'emp_tin',
-                    'emp_emergency_name', 'emp_emergency_num', 'emp_emergency_add'
+                    'emp_emergency_name', 'emp_emergency_num', 'emp_emergency_add', 'emp_back_idno'
                 ];
                 
                 if (backTextElements.includes(draggedElement)) {
@@ -724,7 +766,7 @@ export default function IdTemplateLayout({
             ctx.fillText('Front template image not available', canvas.width / 2, canvas.height / 2);
         }
 
-        // Draw the front elements
+        // Draw all elements - hidden ones will be skipped within drawElement
         drawElement(ctx, 'emp_img', 'rgba(200, 200, 200, 0.7)');
         drawElement(ctx, 'emp_name', 'rgba(100, 149, 237, 0.7)');
         drawElement(ctx, 'emp_pos', 'rgba(144, 238, 144, 0.7)');
@@ -756,7 +798,7 @@ export default function IdTemplateLayout({
             ctx.fillText('Back template image not available', canvas.width / 2, canvas.height / 2);
         }
 
-        // Draw the back elements
+        // Draw all elements - hidden ones will be skipped within drawElement
         drawElement(ctx, 'emp_qrcode', 'rgba(200, 200, 200, 0.7)');
         drawElement(ctx, 'emp_add', 'rgba(100, 149, 237, 0.7)');
         drawElement(ctx, 'emp_bday', 'rgba(144, 238, 144, 0.7)');
@@ -767,15 +809,19 @@ export default function IdTemplateLayout({
         drawElement(ctx, 'emp_emergency_name', 'rgba(255, 215, 0, 0.7)');
         drawElement(ctx, 'emp_emergency_num', 'rgba(255, 215, 0, 0.7)');
         drawElement(ctx, 'emp_emergency_add', 'rgba(255, 215, 0, 0.7)');
+        drawElement(ctx, 'emp_back_idno', 'rgba(255, 182, 193, 0.7)');
     };
 
-    // Unified function to draw an element
+    // Updated drawElement function to show hidden elements with reduced opacity
     const drawElement = (ctx: CanvasRenderingContext2D, element: ElementType, color: string) => {
         const bounds = getElementBounds(element);
         const backTextElements = [
             'emp_add', 'emp_bday', 'emp_sss', 'emp_phic', 'emp_hdmf', 'emp_tin',
-            'emp_emergency_name', 'emp_emergency_num', 'emp_emergency_add'
+            'emp_emergency_name', 'emp_emergency_num', 'emp_emergency_add', 'emp_back_idno'
         ];
+        
+        // Set opacity based on whether element is hidden or not
+        ctx.globalAlpha = hiddenElements.has(element) ? 0.08 : 1.0;
 
         // Set font first so we can measure text
         if (element === 'emp_name') {
@@ -797,6 +843,8 @@ export default function IdTemplateLayout({
             sampleText = "Position";
         } else if (element === 'emp_idno') {
             sampleText = "IDNO";
+        } else if (element === 'emp_back_idno') { // Add this case
+            sampleText = "Back IDNO";
         } else if (element === 'emp_sig') {
             sampleText = "Employee Signature";
         } else if (element === 'emp_add') {
@@ -819,21 +867,30 @@ export default function IdTemplateLayout({
             sampleText = "456 Emergency Address, City";
         }
 
-        if (element === 'emp_name' || element === 'emp_pos' || element === 'emp_idno') {
-            ctx.textAlign = "center";
-        } else if (backTextElements.includes(element)) {
-            ctx.textAlign = "center";
-        }
-        
+        ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
         if (element === 'emp_img' || element === 'emp_qrcode') {
+            // Draw the rectangle with appropriate transparency
             ctx.fillStyle = color;
             ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
             ctx.strokeStyle = '#000';
             ctx.strokeRect(bounds.left, bounds.top, bounds.width, bounds.height);
 
-            // Add resize handles for emp_img
+            // If hidden, add a crossed-out effect
+            if (hiddenElements.has(element)) {
+                ctx.beginPath();
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 2;
+                ctx.moveTo(bounds.left, bounds.top);
+                ctx.lineTo(bounds.left + bounds.width, bounds.top + bounds.height);
+                ctx.moveTo(bounds.left + bounds.width, bounds.top);
+                ctx.lineTo(bounds.left, bounds.top + bounds.height);
+                ctx.stroke();
+                ctx.lineWidth = 1;
+            }
+
+            // Add resize handles for emp_img (only when not hidden)
             if (draggedElement === 'emp_img') {
                 const handleSize = 10;
                 ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
@@ -841,6 +898,47 @@ export default function IdTemplateLayout({
                 ctx.fillRect(bounds.left + bounds.width - handleSize / 2, bounds.top - handleSize / 2, handleSize, handleSize);
                 ctx.fillRect(bounds.left - handleSize / 2, bounds.top + bounds.height - handleSize / 2, handleSize, handleSize);
                 ctx.fillRect(bounds.left + bounds.width - handleSize / 2, bounds.top + bounds.height - handleSize / 2, handleSize, handleSize);
+            }
+        } else if (element === 'emp_sig') {
+            // Get the bounds from the getElementBounds function
+            const sigWidth = 270;
+            const sigHeight = 190;
+            
+            // Use the same bounds for drawing as we do for hit detection
+            const adjustedWidth = sigWidth;
+            const adjustedHeight = sigHeight;
+            
+            // Calculate centered position (since signature should be centered)
+            const adjustedLeft = bounds.left + (bounds.width - adjustedWidth) / 2;
+            const adjustedTop = bounds.top + (bounds.height - adjustedHeight) / 2;
+            
+            // Draw a rectangle for the signature box with actual dimensions
+            ctx.fillStyle = color;
+            ctx.fillRect(adjustedLeft, adjustedTop, adjustedWidth, adjustedHeight);
+            
+            // Add a signature-like line for visual indication
+            ctx.beginPath();
+            ctx.moveTo(adjustedLeft + 20, adjustedTop + adjustedHeight/2);
+            ctx.bezierCurveTo(
+                adjustedLeft + adjustedWidth/3, adjustedTop + adjustedHeight/3,
+                adjustedLeft + adjustedWidth/2, adjustedTop + adjustedHeight/1.5,
+                adjustedLeft + adjustedWidth - 20, adjustedTop + adjustedHeight/2
+            );
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            
+            // If hidden, add a crossed-out effect
+            if (hiddenElements.has(element)) {
+                ctx.beginPath();
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 2;
+                ctx.moveTo(adjustedLeft, adjustedTop);
+                ctx.lineTo(adjustedLeft + adjustedWidth, adjustedTop + adjustedHeight);
+                ctx.moveTo(adjustedLeft + adjustedWidth, adjustedTop);
+                ctx.lineTo(adjustedLeft, adjustedTop + adjustedHeight);
+                ctx.stroke();
+                ctx.lineWidth = 1;
             }
         } else {
             // Calculate the actual text width plus padding
@@ -852,37 +950,8 @@ export default function IdTemplateLayout({
             let adjustedWidth = textWidth + horizontalPadding;
             let adjustedHeight = bounds.height;
 
-            if (element === 'emp_sig') {
-                // Get the bounds from the getElementBounds function
-                const sigWidth = 270;  // Match the width in getElementBounds
-                const sigHeight = 190;  // Match the height in getElementBounds
-                
-                // Use the same bounds for drawing as we do for hit detection
-                adjustedWidth = sigWidth;
-                adjustedHeight = sigHeight;
-                
-                // Calculate centered position (since signature should be centered)
-                const adjustedLeft = bounds.left + (bounds.width - adjustedWidth) / 2;
-                const adjustedTop = bounds.top + (bounds.height - adjustedHeight) / 2;
-                
-                // Draw a rectangle for the signature box with actual dimensions
-                ctx.fillStyle = color;
-                ctx.fillRect(adjustedLeft, adjustedTop, adjustedWidth, adjustedHeight);
-                
-                // Add a signature-like line for visual indication
-                ctx.beginPath();
-                ctx.moveTo(adjustedLeft + 20, adjustedTop + adjustedHeight/2);
-                ctx.bezierCurveTo(
-                    adjustedLeft + adjustedWidth/3, adjustedTop + adjustedHeight/3,
-                    adjustedLeft + adjustedWidth/2, adjustedTop + adjustedHeight/1.5,
-                    adjustedLeft + adjustedWidth - 20, adjustedTop + adjustedHeight/2
-                );
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 1.5;
-                ctx.stroke();
-            }
             // For multiline text elements, adjust height
-            else if (element === 'emp_add' || element === 'emp_emergency_add') {
+            if (element === 'emp_add' || element === 'emp_emergency_add') {
                 adjustedHeight = 22.5; // Allow for 2 lines of text
             }
             
@@ -899,7 +968,7 @@ export default function IdTemplateLayout({
                 adjustedTop = bounds.top;
             }
             
-            // Draw the colored background to fit the text
+            // Draw the colored background with appropriate transparency
             ctx.fillStyle = color;
             ctx.fillRect(adjustedLeft, adjustedTop, adjustedWidth, adjustedHeight);
             
@@ -916,8 +985,29 @@ export default function IdTemplateLayout({
                 ctx.fillText(sampleText, adjustedLeft + adjustedWidth / 2, adjustedTop + adjustedHeight / 2);
             }
             
-            // Draw visual guides for alignment (only when selected)
-            if (draggedElement === element) {
+            // If hidden, add a line through the text
+            if (hiddenElements.has(element)) {
+                ctx.beginPath();
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 1;
+                
+                if (backTextElements.includes(element)) {
+                    // For left-aligned text, draw line through the text area
+                    ctx.moveTo(adjustedLeft, adjustedTop + adjustedHeight / 2);
+                    ctx.lineTo(adjustedLeft + adjustedWidth, adjustedTop + adjustedHeight / 2);
+                } else {
+                    // For centered text, draw line through the text area
+                    const centerY = adjustedTop + adjustedHeight / 2;
+                    ctx.moveTo(adjustedLeft, centerY);
+                    ctx.lineTo(adjustedLeft + adjustedWidth, centerY);
+                }
+                
+                ctx.stroke();
+                ctx.lineWidth = 1;
+            }
+            
+            // Draw visual guides for alignment (only when selected and not hidden)
+            if (draggedElement === element && !hiddenElements.has(element)) {
                 ctx.save();
                 ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
                 ctx.setLineDash([2, 2]);
@@ -942,8 +1032,8 @@ export default function IdTemplateLayout({
             }
         }
 
-        // If this element is being dragged, add a visual indicator
-        if (draggedElement === element) {
+        // If this element is being dragged (only possible if not hidden), add a visual indicator
+        if (draggedElement === element && !hiddenElements.has(element)) {
             // Calculate the actual bounds we're using
             const actualLeft = element === 'emp_img' || element === 'emp_qrcode' ? bounds.left : 
                              backTextElements.includes(element) ? bounds.left :
@@ -976,6 +1066,9 @@ export default function IdTemplateLayout({
 
             ctx.lineWidth = 1;
         }
+        
+        // Reset global alpha to default
+        ctx.globalAlpha = 1.0;
     };
 
     // Update element position and redraw canvas
@@ -1009,66 +1102,85 @@ export default function IdTemplateLayout({
     const saveChanges = () => {
         if (isSubmitting) return;
         setIsSubmitting(true);
+        setSuccessMessage(null);
 
-        // Map our coordinates object to match the expected format in the controller
-        const mappedCoordinates = {
-            emp_img_x: coordinates.emp_img_x,
-            emp_img_y: coordinates.emp_img_y,
-            emp_img_width: coordinates.emp_img_width,
-            emp_img_height: coordinates.emp_img_height,
-            emp_name_x: coordinates.emp_name_x,
-            emp_name_y: coordinates.emp_name_y,
-            emp_pos_x: coordinates.emp_pos_x,
-            emp_pos_y: coordinates.emp_pos_y,
-            emp_idno_x: coordinates.emp_idno_x,
-            emp_idno_y: coordinates.emp_idno_y,
-            emp_sig_x: coordinates.emp_sig_x,
-            emp_sig_y: coordinates.emp_sig_y,
-            emp_add_x: coordinates.emp_add_x,
-            emp_add_y: coordinates.emp_add_y,
-            emp_bday_x: coordinates.emp_bday_x,
-            emp_bday_y: coordinates.emp_bday_y,
-            emp_sss_x: coordinates.emp_sss_x,
-            emp_sss_y: coordinates.emp_sss_y,
-            emp_phic_x: coordinates.emp_phic_x,
-            emp_phic_y: coordinates.emp_phic_y,
-            emp_hdmf_x: coordinates.emp_hdmf_x,
-            emp_hdmf_y: coordinates.emp_hdmf_y,
-            emp_tin_x: coordinates.emp_tin_x,
-            emp_tin_y: coordinates.emp_tin_y,
-            emp_emergency_name_x: coordinates.emp_emergency_name_x,
-            emp_emergency_name_y: coordinates.emp_emergency_name_y,
-            emp_emergency_num_x: coordinates.emp_emergency_num_x,
-            emp_emergency_num_y: coordinates.emp_emergency_num_y,
-            emp_emergency_add_x: coordinates.emp_emergency_add_x,
-            emp_emergency_add_y: coordinates.emp_emergency_add_y,
-            emp_qrcode_x: coordinates.emp_qrcode_x,
-            emp_qrcode_y: coordinates.emp_qrcode_y,
-            emp_qrcode_width: coordinates.emp_qrcode_width,
-            emp_qrcode_height: coordinates.emp_qrcode_height,
-        };
+        // Map our coordinates object to match the expected format in the server
+        const mappedCoordinates = { ...coordinates };
+        
+        // Convert hidden elements Set to array for storage and log it for debugging
+        const hiddenElementsArray = Array.from(hiddenElements);
+        console.log("Sending hidden elements to server:", hiddenElementsArray);
 
-        router.post(route('id-templates.update-positions', template.id), mappedCoordinates, {
-            onSuccess: () => {
-                setIsSubmitting(false);
-                setSuccessMessage('Template layout updated successfully');
-                
-                // Clear the success message after 3 seconds
-                setTimeout(() => {
-                    setSuccessMessage(null);
-                }, 3000);
-            },
-            onError: (errors) => {
-                setIsSubmitting(false);
-                console.error('Failed to update template layout:', errors);
-                const errorMessage = Object.values(errors).flat().join('\n');
-                setSuccessMessage(`Error: ${errorMessage || 'Failed to update template layout'}`);
-                
-                setTimeout(() => {
-                    setSuccessMessage(null);
-                }, 5000);
-            },
+        router.post(route('id-templates.update-positions', template.id), 
+            { 
+                ...mappedCoordinates,
+                hidden_elements: hiddenElementsArray  // Ensure this matches what the controller expects
+            }, 
+            {
+                onSuccess: (page) => {
+                    console.log("Success response:", page);
+                    setSuccessMessage('Template coordinates saved successfully!');
+                    setIsSubmitting(false);
+                    
+                    // Hide success message after 3 seconds
+                    setTimeout(() => {
+                        setSuccessMessage(null);
+                    }, 3000);
+                },
+                onError: (errors) => {
+                    console.error("Error response:", errors);
+                    setIsSubmitting(false);
+                    const errorMessage = Object.values(errors).flat().join('\n');
+                    setSuccessMessage(`Error: ${errorMessage || 'Failed to update template layout'}`);
+                    
+                    // Hide error message after 5 seconds
+                    setTimeout(() => {
+                        setSuccessMessage(null);
+                    }, 5000);
+                }
+            }
+        );
+    };
+
+    // Update your toggleElementVisibility function
+    const toggleElementVisibility = (element: ElementType) => {
+        setHiddenElements((prev) => {
+            const newSet = new Set(prev);
+            if (newSet.has(element)) {
+                newSet.delete(element);
+            } else {
+                newSet.add(element);
+            }
+            return newSet;
         });
+        // Note: No need to call drawFrontCanvas/drawBackCanvas here 
+        // because the useEffect above will handle that
+    };
+
+    const HideShowToggle = ({ element }: { element: ElementType }) => {
+      const isHidden = hiddenElements.has(element);
+      
+      return (
+        <button
+          className={`flex items-center px-1 py-0.5 rounded text-xs ${
+            isHidden
+              ? 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400 border border-dashed border-gray-400'
+              : 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400'
+          }`}
+          onClick={() => toggleElementVisibility(element)}
+          title={isHidden ? 'Show element' : 'Hide element'}
+        >
+          {isHidden ? (
+            <>
+              <EyeOff className="h-3 w-3 mr-1" /> Hidden
+            </>
+          ) : (
+            <>
+              <Eye className="h-3 w-3 mr-1" /> Visible
+            </>
+          )}
+        </button>
+      );
     };
 
     return (
@@ -1118,7 +1230,10 @@ export default function IdTemplateLayout({
 
                             {/* Photo */}
                             <div className="pb-2 border-b border-gray-100 dark:border-gray-700">
-                                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Photo</div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Photo</span>
+                                    <HideShowToggle element="emp_img" />
+                                </div>
                                 <div className="grid grid-cols-2 gap-1 mb-1">
                                     <div className="flex items-center">
                                         <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">X</span>
@@ -1231,6 +1346,7 @@ export default function IdTemplateLayout({
                             <div className='pb-2 border-b border-gray-100 dark:border-gray-700'>
                                 <div className="flex justify-between items-center mb-1">
                                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400">ID Number</span>
+                                    <HideShowToggle element="emp_idno" />
                                     <button
                                         className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
                                         onClick={() => centerElement('emp_idno')}
@@ -1355,6 +1471,7 @@ export default function IdTemplateLayout({
                             <div className="pb-2 border-b border-gray-100 dark:border-gray-700">
                                 <div className="flex justify-between items-center mb-1">
                                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400">QR Code</span>
+                                    <HideShowToggle element='emp_qrcode' />
                                     <button
                                         className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
                                         onClick={() => centerElement('emp_qrcode')}
@@ -1408,6 +1525,7 @@ export default function IdTemplateLayout({
                             <div className="pb-2 border-b border-gray-100 dark:border-gray-700">
                                 <div className="flex justify-between items-center mb-1">
                                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Address</span>
+                                    <HideShowToggle element='emp_add' />
                                     <button
                                         className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
                                         onClick={() => centerElement('emp_add')}
@@ -1500,61 +1618,6 @@ export default function IdTemplateLayout({
                                                     />
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
-
-                                    {/* TIN */}
-                                    <div className="pb-1">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">TIN</span>
-                                            <div className="flex space-x-1">
-                                                <div className="flex items-center">
-                                                    <span className="text-xs text-gray-500">X:</span>
-                                                    <input
-                                                        type="number"
-                                                        value={coordinates.emp_tin_x}
-                                                        onChange={(e) => updateElementPosition('emp_tin', 'x', e.target.value)}
-                                                        className="ml-1 w-12 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
-                                                    />
-                                                </div>
-                                                <div className="flex items-center">
-                                                    <span className="text-xs text-gray-500">Y:</span>
-                                                    <input
-                                                        type="number"
-                                                        value={coordinates.emp_tin_y}
-                                                        onChange={(e) => updateElementPosition('emp_tin', 'y', e.target.value)}
-                                                        className="ml-1 w-12 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* PHIC */}
-                                    <div className="pb-1">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">PHIC</span>
-                                            <div className="flex space-x-1">
-                                                <div className="flex items-center">
-                                                    <span className="text-xs text-gray-500">X:</span>
-                                                    <input
-                                                        type="number"
-                                                        value={coordinates.emp_phic_x}
-                                                        onChange={(e) => updateElementPosition('emp_phic', 'x', e.target.value)}
-                                                        className="ml-1 w-12 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
-                                                    />
-                                                </div>
-                                                <div className="flex items-center">
-                                                    <span className="text-xs text-gray-500">Y:</span>
-                                                    <input
-                                                        type="number"
-                                                        value={coordinates.emp_phic_y}
-                                                        onChange={(e) => updateElementPosition('emp_phic', 'y', e.target.value)}
-                                                        className="ml-1 w-12 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
                                     </div>
 
                                     {/* HDMF */}
@@ -1669,11 +1732,48 @@ export default function IdTemplateLayout({
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* Back ID Number */}
+                                    <div className="pb-2 border-b border-gray-100 dark:border-gray-700">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">ID Number (Back)</span>
+                                            <div className="flex space-x-1">
+                                                <HideShowToggle element="emp_back_idno" />
+                                                <button
+                                                    className="inline-flex items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                                                    onClick={() => centerElement('emp_back_idno')}
+                                                >
+                                                    <AlignCenter className="h-2 w-2 mr-0.5" /> Center
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-1">
+                                            <div className="flex items-center">
+                                                <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">X</span>
+                                                <input
+                                                    type="number"
+                                                    value={coordinates.emp_back_idno_x}
+                                                    onChange={(e) => updateElementPosition('emp_back_idno', 'x', e.target.value)}
+                                                    className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
+                                                />
+                                            </div>
+                                            <div className="flex items-center">
+                                                <span className="w-4 h-4 flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">Y</span>
+                                                <input
+                                                    type="number"
+                                                    value={coordinates.emp_back_idno_y}
+                                                    onChange={(e) => updateElementPosition('emp_back_idno', 'y', e.target.value)}
+                                                    className="ml-1 flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-xs text-center py-0.5"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
             </div>
 
             {/* Dragging info toast */}

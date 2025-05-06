@@ -49,6 +49,8 @@ class TemplateImage extends Model
         'emp_qrcode_y',
         'emp_qrcode_width',
         'emp_qrcode_height',
+        'emp_back_idno_x',
+        'emp_back_idno_y',
     ];
 
     // Relationship with BusinessUnit
