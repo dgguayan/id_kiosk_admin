@@ -369,15 +369,40 @@ class TemplateImagesController extends Controller
                 'emp_qrcode_y' => 'required|numeric',
                 'emp_qrcode_width' => 'numeric',
                 'emp_qrcode_height' => 'numeric',
+                'emp_back_idno_x' => 'required|numeric',
+                'emp_back_idno_y' => 'required|numeric',
+                'hidden_elements' => 'nullable|array',
             ]);
-            
+                
             // Find the specific template to update
             $template = TemplateImage::findOrFail($id);
             $originalPositions = $template->only(array_keys($validated));
             
-            // Update the template with new positions
-            $template->update($validated);
+            // Handle the hidden_elements field
+            if (isset($validated['hidden_elements'])) {
+                // Ensure it's properly converted to JSON for storage
+                $template->hidden_elements = json_encode($validated['hidden_elements']);
+                
+                // Debug log
+                Log::info('Storing hidden elements', [
+                    'template_id' => $id,
+                    'hidden_elements' => $validated['hidden_elements'],
+                    'encoded' => json_encode($validated['hidden_elements'])
+                ]);
+            } else {
+                // Explicitly set to empty array if not provided
+                $template->hidden_elements = json_encode([]);
+            }
             
+            // Update the template with new positions
+            foreach ($validated as $key => $value) {
+                if ($key !== 'hidden_elements') {
+                    $template->{$key} = $value;
+                }
+            }
+            
+            $template->save();
+                
             // Log the template positions update
             ActivityLogService::log(
                 'template_positions_updated',
@@ -390,7 +415,7 @@ class TemplateImagesController extends Controller
                     'updated_by' => Auth::user()->name ?? 'System'
                 ]
             );
-            
+                
             // Return an Inertia redirect response with flash message
             return back()->with('success', 'Template layout positions updated successfully');
         } catch (ModelNotFoundException $e) {

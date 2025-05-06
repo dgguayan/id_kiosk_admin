@@ -574,13 +574,28 @@ class EmployeeController extends Controller
             $frontTemplate = $this->getFrontTemplatePath($templateId);
             $backTemplate = $this->getBackTemplatePath($templateId);
             
+            // Process hidden elements from the template
+            $hiddenElements = [];
+            if ($templateImage && isset($templateImage->hidden_elements)) {
+                try {
+                    if (is_string($templateImage->hidden_elements)) {
+                        $hiddenElements = json_decode($templateImage->hidden_elements, true) ?? [];
+                    } else {
+                        $hiddenElements = $templateImage->hidden_elements ?? [];
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error parsing hidden elements: ' . $e->getMessage());
+                }
+            }
+            
             // Log the template paths for debugging
             Log::info('Template paths for ID Card preview:', [
                 'employee_id' => $employee->id,
                 'businessunit_id' => $employee->businessunit_id,
                 'template_id' => $templateId,
                 'front_template' => $frontTemplate,
-                'back_template' => $backTemplate
+                'back_template' => $backTemplate,
+                'hidden_elements' => $hiddenElements
             ]);
             
             return Inertia::render('Employee/IdCardPreview', [
@@ -588,6 +603,7 @@ class EmployeeController extends Controller
                 'templateImages' => $templateImages,
                 'frontTemplate' => $frontTemplate,
                 'backTemplate' => $backTemplate,
+                'hiddenElements' => $hiddenElements,
                 'debug' => [
                     'templateId' => $templateId,
                     'businessunitId' => $employee->businessunit_id,

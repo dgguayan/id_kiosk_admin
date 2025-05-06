@@ -66,17 +66,42 @@ interface IdCardPreviewProps {
         emp_emergency_num_y?: number;
         emp_emergency_add_x?: number;
         emp_emergency_add_y?: number;
+        emp_back_idno_x?: number;
+        emp_back_idno_y?: number;
     };
     frontTemplate: string;
     backTemplate: string;
+    hiddenElements?: string[]; // Add this new prop
 }
 
-const IdCardPreview: React.FC<IdCardPreviewProps> = ({ employee, templateImages, frontTemplate, backTemplate }) => {
+const IdCardPreview: React.FC<IdCardPreviewProps> = ({ 
+    employee, 
+    templateImages, 
+    frontTemplate, 
+    backTemplate, 
+    hiddenElements = [] // Default to empty array
+}) => {
+    // Create a proper Set from the hiddenElements array and log it for debugging
+    const hiddenElementsSet = React.useMemo(() => {
+        console.log("Hidden elements received:", hiddenElements);
+        return new Set<string>(Array.isArray(hiddenElements) ? hiddenElements : []);
+    }, [hiddenElements]);
+
+    // Add debug output after initialization
+    useEffect(() => {
+        console.log("Hidden elements set initialized:", {
+            isSet: hiddenElementsSet instanceof Set,
+            size: hiddenElementsSet.size,
+            elements: Array.from(hiddenElementsSet)
+        });
+    }, [hiddenElementsSet]);
+
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Employee List', href: '/employee' },
         { title: 'ID Card Preview', href: `/employee/${employee.uuid}/id-preview` },
     ];
-
+    
+    // Convert hiddenElements array to a Set for more efficient lookups
     const frontCanvasRef = useRef<HTMLCanvasElement>(null);
     const backCanvasRef = useRef<HTMLCanvasElement>(null);
     
@@ -428,11 +453,11 @@ const IdCardPreview: React.FC<IdCardPreviewProps> = ({ employee, templateImages,
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         try {
-            // Draw template background
+            // Always draw template background first
             ctx.drawImage(frontImg, 0, 0, canvas.width, canvas.height);
             
-            // Draw employee image if loaded - using top-left coordinates
-            if (employeeImg) {
+            // Draw employee image if loaded - and if not hidden
+            if (employeeImg && !hiddenElementsSet.has('emp_img')) {
                 const height = templateImages.emp_img_height || 265;
                 const width = templateImages.emp_img_width || 265;
                 const x = templateImages.emp_img_x || 193;
@@ -442,39 +467,45 @@ const IdCardPreview: React.FC<IdCardPreviewProps> = ({ employee, templateImages,
                 ctx.drawImage(employeeImg, x, y, width, height);
             }
             
-            // Draw employee name with dynamic color
-            const empNameX = templateImages.emp_name_x || 341;
-            const empNameY = templateImages.emp_name_y || 675;
-            const fullName = `${employee.employee_firstname} ${employee.employee_middlename || ''} ${employee.employee_lastname} ${employee.employee_name_extension || ''}`.trim();
+            // Draw employee name - if not hidden
+            if (!hiddenElementsSet.has('emp_name')) {
+                const empNameX = templateImages.emp_name_x || 341;
+                const empNameY = templateImages.emp_name_y || 675;
+                const fullName = `${employee.employee_firstname} ${employee.employee_middlename || ''} ${employee.employee_lastname} ${employee.employee_name_extension || ''}`.trim();
 
-            // Check if background is dark and set text color accordingly
-            const nameAreaIsDark = isBackgroundDark(ctx, empNameX, empNameY, 150, 30);
-            ctx.fillStyle = nameAreaIsDark ? 'white' : 'black';
-            ctx.font = 'bold 30px "Calibri", "Roboto", sans-serif';
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(fullName, empNameX, empNameY);
+                // Check if background is dark and set text color accordingly
+                const nameAreaIsDark = isBackgroundDark(ctx, empNameX, empNameY, 150, 30);
+                ctx.fillStyle = nameAreaIsDark ? 'white' : 'black';
+                ctx.font = 'bold 30px "Calibri", "Roboto", sans-serif';
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(fullName, empNameX, empNameY);
+            }
 
             // Draw position with dynamic color
-            const empPosX = templateImages.emp_pos_x || 341;
-            const empPosY = templateImages.emp_pos_y || 700;
-            const posAreaIsDark = isBackgroundDark(ctx, empPosX, empPosY, 150, 30);
-            ctx.fillStyle = posAreaIsDark ? 'white' : 'black';
-            ctx.font = 'italic 25px "Calibri", "Roboto", sans-serif';
-            ctx.textAlign = "center";
-            ctx.fillText(employee.position || 'N/A', empPosX, empPosY);
+            if (!hiddenElementsSet.has('emp_pos')) {
+                const empPosX = templateImages.emp_pos_x || 341;
+                const empPosY = templateImages.emp_pos_y || 700;
+                const posAreaIsDark = isBackgroundDark(ctx, empPosX, empPosY, 150, 30);
+                ctx.fillStyle = posAreaIsDark ? 'white' : 'black';
+                ctx.font = 'italic 25px "Calibri", "Roboto", sans-serif';
+                ctx.textAlign = "center";
+                ctx.fillText(employee.position || 'N/A', empPosX, empPosY);
+            }
 
             // Draw ID number with dynamic color
-            const empIdNoX = templateImages.emp_idno_x || 325;
-            const empIdNoY = templateImages.emp_idno_y || 725;
-            const idAreaIsDark = isBackgroundDark(ctx, empIdNoX, empIdNoY, 100, 30);
-            ctx.fillStyle = idAreaIsDark ? 'white' : 'black';
-            ctx.font = 'bold 18px "Calibri", "Roboto", sans-serif';
-            ctx.textAlign = "center";
-            ctx.fillText(employee.id_no, empIdNoX, empIdNoY);
+            if (!hiddenElementsSet.has('emp_idno')) {
+                const empIdNoX = templateImages.emp_idno_x || 325;
+                const empIdNoY = templateImages.emp_idno_y || 725;
+                const idAreaIsDark = isBackgroundDark(ctx, empIdNoX, empIdNoY, 100, 30);
+                ctx.fillStyle = idAreaIsDark ? 'white' : 'black';
+                ctx.font = 'bold 18px "Calibri", "Roboto", sans-serif';
+                ctx.textAlign = "center";
+                ctx.fillText(employee.id_no, empIdNoX, empIdNoY);
+            }
             
             // Draw signature with color inversion on dark backgrounds
-            if (signatureImg) {
+            if (!hiddenElementsSet.has('emp_sig') && signatureImg) {
                 const signatureWidth = 273;
                 const signatureHeight = 193;
                 const empSigX = templateImages.emp_sig_x || 341;
@@ -573,7 +604,7 @@ const IdCardPreview: React.FC<IdCardPreviewProps> = ({ employee, templateImages,
             ctx.drawImage(backImg, 0, 0, canvas.width, canvas.height);
             
             // Draw QR code - using top-left coordinates
-            if (qrcodeImg) {
+            if (qrcodeImg && !hiddenElementsSet.has('emp_qrcode')) {
                 const qrX = templateImages.emp_qrcode_x || 483;
                 const qrY = templateImages.emp_qrcode_y || 88;
                 const qrWidth = templateImages.emp_qrcode_width || 150;
@@ -590,65 +621,103 @@ const IdCardPreview: React.FC<IdCardPreviewProps> = ({ employee, templateImages,
             ctx.textBaseline = "middle"; // Important for proper vertical alignment
             
             // Draw address with dynamically calculated width
-            const empAddX = templateImages.emp_add_x || 150;
-            const empAddY = templateImages.emp_add_y || 225;
-            ctx.font = '25px "Calibri", "Roboto", sans-serif';
-            drawWrappedText(ctx, employee.address || 'N/A', empAddX, empAddY, undefined, 2);
+            if (!hiddenElementsSet.has('emp_add')) {
+                const empAddX = templateImages.emp_add_x || 150;
+                const empAddY = templateImages.emp_add_y || 225;
+                ctx.font = '25px "Calibri", "Roboto", sans-serif';
+                drawWrappedText(ctx, employee.address || 'N/A', empAddX, empAddY, undefined, 2);
+            }
             
             // Draw birthdate with vertical centering
-            const empBdayX = templateImages.emp_bday_x || 150;
-            const empBdayY = templateImages.emp_bday_y || 257;
-            ctx.font = '25px "Calibri", "Roboto", sans-serif';
-            
-            // Format birthday if it exists
-            let birthdate = 'N/A';
-            if (employee.birthday) {
-                const date = new Date(employee.birthday);
-                birthdate = date.toLocaleDateString('en-US', { 
-                    month: 'long', 
-                    day: 'numeric', 
-                    year: 'numeric' 
-                });
+            if (!hiddenElementsSet.has('emp_bday')) {
+                const empBdayX = templateImages.emp_bday_x || 150;
+                const empBdayY = templateImages.emp_bday_y || 257;
+                ctx.font = '25px "Calibri", "Roboto", sans-serif';
+                
+                // Format birthday if it exists
+                let birthdate = 'N/A';
+                if (employee.birthday) {
+                    const date = new Date(employee.birthday);
+                    birthdate = date.toLocaleDateString('en-US', { 
+                        month: 'long', 
+                        day: 'numeric', 
+                        year: 'numeric' 
+                    });
+                }
+                ctx.fillText(birthdate, empBdayX, empBdayY);
             }
-            ctx.fillText(birthdate, empBdayX, empBdayY);
             
             // Draw SSS number
-            const empSssX = templateImages.emp_sss_x || 150;
-            const empSssY = templateImages.emp_sss_y || 283;
-            ctx.font = '25px "Calibri", "Roboto", sans-serif';
-            ctx.fillText(employee.sss_no || 'N/A', empSssX, empSssY);
+            if (!hiddenElementsSet.has('emp_sss')) {
+                const empSssX = templateImages.emp_sss_x || 150;
+                const empSssY = templateImages.emp_sss_y || 283;
+                ctx.font = '25px "Calibri", "Roboto", sans-serif';
+                ctx.fillText(employee.sss_no || 'N/A', empSssX, empSssY);
+            }
             
             // Draw PHIC number
-            const empPhicX = templateImages.emp_phic_x || 150;
-            const empPhicY = templateImages.emp_phic_y || 308;
-            ctx.fillText(employee.phic_no || 'N/A', empPhicX, empPhicY);
+            if (!hiddenElementsSet.has('emp_phic')) {
+                const empPhicX = templateImages.emp_phic_x || 150;
+                const empPhicY = templateImages.emp_phic_y || 308;
+                ctx.fillText(employee.phic_no || 'N/A', empPhicX, empPhicY);
+            }
             
             // Draw HDMF number
-            const empHdmfX = templateImages.emp_hdmf_x || 150;
-            const empHdmfY = templateImages.emp_hdmf_y || 333;
-            ctx.fillText(employee.hdmf_no || 'N/A', empHdmfX, empHdmfY);
+            if (!hiddenElementsSet.has('emp_hdmf')) {
+                const empHdmfX = templateImages.emp_hdmf_x || 150;
+                const empHdmfY = templateImages.emp_hdmf_y || 333;
+                ctx.fillText(employee.hdmf_no || 'N/A', empHdmfX, empHdmfY);
+            }
             
             // Draw TIN number
-            const empTinX = templateImages.emp_tin_x || 150;
-            const empTinY = templateImages.emp_tin_y || 360;
-            ctx.fillText(employee.tin_no || 'N/A', empTinX, empTinY);
+            if (!hiddenElementsSet.has('emp_tin')) {
+                const empTinX = templateImages.emp_tin_x || 150;
+                const empTinY = templateImages.emp_tin_y || 360;
+                ctx.fillText(employee.tin_no || 'N/A', empTinX, empTinY);
+            }
             
             // Draw emergency contact information
-            const empEmergencyNameX = templateImages.emp_emergency_name_x || 150;
-            const empEmergencyNameY = templateImages.emp_emergency_name_y || 626;
-            ctx.font = '25px "Calibri", "Roboto", sans-serif';
-            const emergencyNameMaxWidth = 400; // Maximum width for emergency contact name
-            ctx.fillText(employee.emergency_name || 'N/A', empEmergencyNameX, empEmergencyNameY);
+            if (!hiddenElementsSet.has('emp_emergency_name')) {
+                const empEmergencyNameX = templateImages.emp_emergency_name_x || 150;
+                const empEmergencyNameY = templateImages.emp_emergency_name_y || 626;
+                ctx.font = '25px "Calibri", "Roboto", sans-serif';
+                const emergencyNameMaxWidth = 400;
+                ctx.fillText(employee.emergency_name || 'N/A', empEmergencyNameX, empEmergencyNameY);
+            }
             
             // Draw emergency contact number
-            const empEmergencyNumX = templateImages.emp_emergency_num_x || 150;
-            const empEmergencyNumY = templateImages.emp_emergency_num_y || 680;
-            ctx.fillText(employee.emergency_contact_number || 'N/A', empEmergencyNumX, empEmergencyNumY);
+            if (!hiddenElementsSet.has('emp_emergency_num')) {
+                const empEmergencyNumX = templateImages.emp_emergency_num_x || 150;
+                const empEmergencyNumY = templateImages.emp_emergency_num_y || 680;
+                ctx.fillText(employee.emergency_contact_number || 'N/A', empEmergencyNumX, empEmergencyNumY);
+            }
             
             // Draw emergency contact address with dynamically calculated width
-            const empEmergencyAddX = templateImages.emp_emergency_add_x || 150;
-            const empEmergencyAddY = templateImages.emp_emergency_add_y || 738;
-            drawWrappedText(ctx, employee.emergency_address || 'N/A', empEmergencyAddX, empEmergencyAddY, undefined, 2);
+            if (!hiddenElementsSet.has('emp_emergency_add')) {
+                const empEmergencyAddX = templateImages.emp_emergency_add_x || 150;
+                const empEmergencyAddY = templateImages.emp_emergency_add_y || 738;
+                drawWrappedText(ctx, employee.emergency_address || 'N/A', empEmergencyAddX, empEmergencyAddY, undefined, 2);
+            }
+            
+            // Draw back ID number
+            if (!hiddenElementsSet.has('emp_back_idno')) {
+                const empBackIdnoX = templateImages.emp_back_idno_x || 150; // Use 150 as default like other back elements
+                const empBackIdnoY = templateImages.emp_back_idno_y || 400;
+                
+                // Set the font first
+                ctx.font = '25px "Calibri", "Roboto", sans-serif'; // Use same font as other back elements
+                
+                // Check if background is dark and set text color accordingly
+                const idAreaIsDark = isBackgroundDark(ctx, empBackIdnoX, empBackIdnoY, 100, 30);
+                ctx.fillStyle = idAreaIsDark ? 'white' : 'black';
+                
+                // Make sure text alignment is set to left (same as other back elements)
+                ctx.textAlign = "left";
+                ctx.textBaseline = "middle"; // This is important - same as other elements
+                
+                // Draw the text - use the same format as other back elements
+                ctx.fillText(employee.id_no || 'N/A', empBackIdnoX, empBackIdnoY);
+            }
         } catch (error) {
             console.error("Error rendering back canvas:", error);
             setErrorMessage("Error rendering ID card. Please try again later.");
