@@ -952,7 +952,8 @@ export default function IdTemplateLayout({
 
             // For multiline text elements, adjust height
             if (element === 'emp_add' || element === 'emp_emergency_add') {
-                adjustedHeight = 22.5; // Allow for 2 lines of text
+                ctx.textBaseline = 'bottom';
+                adjustedHeight = 42.5; // Allow for 2 lines of text
             }
             
             // Calculate actual bounds based on element type
