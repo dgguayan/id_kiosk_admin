@@ -663,7 +663,7 @@ export default function Employee({
                                                 <span className="sr-only">View {employee.employee_firstname}</span>
                                             </button>
                                             <button 
-                                                className="text-yellow-600 hover:text-yellow-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                                className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300"
                                                 onClick={() => openEditModal(employee)}
                                             >
                                                 <Edit className="h-4 w-4" />

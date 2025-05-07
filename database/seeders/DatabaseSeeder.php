@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             BusinessUnitSeeder::class,
             EmployeeSeeder::class,
             UserSeeder::class,
+            NetworkPathSeeder::class,
         ]);
         $this->call(AdminUserSeeder::class);
     }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\NetworkPath;
 use App\Models\TemplateImage;
 use App\Models\BusinessUnit;
 use App\Services\ActivityLogService;
@@ -26,7 +27,10 @@ class TemplateImagesController extends Controller
      */
     public function __construct()
     {
-        $this->networkPath = env('NETWORK_IMAGE_PATH', '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\id_templates\\');
+        $this->networkPath = NetworkPath::getNetworkPath(
+            'network_images_path', 
+            '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\'
+        ) . 'id_templates\\';
     }
 
     /**

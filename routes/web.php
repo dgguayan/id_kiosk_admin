@@ -7,6 +7,7 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\TemplateImagesController;
 use App\Http\Controllers\PendingIdController;
 use App\Http\Controllers\UserManagementController;
+use App\Http\Controllers\NetworkPathController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -51,7 +52,13 @@ Route::middleware(['auth'])->group(function () {
 
 // Network images route
 Route::get('/network-images/{folder}/{filename}', function ($folder, $filename) {
-    $path = '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\' . $folder . '\\' . $filename;
+    // Get path from database settings, with fallback to default
+    $basePath = \App\Models\NetworkPath::getNetworkPath(
+        'network_images_path', 
+        '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\'
+    );
+    
+    $path = $basePath . $folder . '\\' . $filename;
     
     // Convert to realpath
     $realPath = realpath($path);
@@ -81,6 +88,8 @@ Route::middleware('auth')->group(function () {
 Route::group(['middleware' => ['auth', \App\Http\Middleware\CheckUserRole::class.':Admin']], function () {
     Route::get('/activity-log', [ActivityLogController::class, 'index'])->name('activity-log.index');
     Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
+    Route::get('/settings/network-path', [NetworkPathController::class, 'index'])->name('settings.network-path');
+    Route::post('/settings/network-path', [NetworkPathController::class, 'store'])->name('settings.network-path.store');
 });
 
 
