@@ -142,13 +142,14 @@ class EmployeeController extends Controller
         ]);
         
         try {
-
-            $maxIdNo = Employee::max('id_no') ?? 0;
-            $newIdNo = (int)$maxIdNo + 1;
+            // Get the current counter value from the settings table
+            $counterSetting = DB::table('settings')->where('key', 'employee_id_counter')->first();
+            $newIdNo = $counterSetting ? (int)$counterSetting->value : 1;
             
+            // Format the ID with leading zeros
             $idNo = str_pad($newIdNo, 6, '0', STR_PAD_LEFT);
             
-            DB::transaction(function () use ($validated, $idNo, $request) {
+            DB::transaction(function () use ($validated, $idNo, $request, $newIdNo) {
                 $employee = new Employee();
                 $employee->id_no = $idNo;
                 $employee->employee_firstname = $validated['employee_firstname'];
@@ -176,10 +177,19 @@ class EmployeeController extends Controller
                 if ($request->hasFile('image_person')) {
                     $file = $request->file('image_person');
                     $imagePersonFilename = time() . '_' . $file->getClientOriginalName();
-                    $networkPath = '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\employee';
+                    
+                    // Get path from database settings, with fallback to default
+                    $basePath = \App\Models\NetworkPath::getNetworkPath(
+                        'network_images_path', 
+                        '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\'
+                    );
+                    
+                    $networkPath = $basePath . 'employee';
+                    
                     if (!file_exists($networkPath)) {
                         mkdir($networkPath, 0777, true);
                     }
+                    
                     $file->move($networkPath, $imagePersonFilename);
                     $employee->image_person = $imagePersonFilename;
                 }
@@ -187,26 +197,53 @@ class EmployeeController extends Controller
                 if ($request->hasFile('image_signature')) {
                     $file = $request->file('image_signature');
                     $imageSignatureFilename = time() . '_' . $file->getClientOriginalName();
-                    $networkPath = '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\signature';
+                    
+                    // Get path from database settings
+                    $basePath = \App\Models\NetworkPath::getNetworkPath(
+                        'network_images_path', 
+                        '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\'
+                    );
+                    
+                    $networkPath = $basePath . 'signature';
+                    
                     if (!file_exists($networkPath)) {
                         mkdir($networkPath, 0777, true);
                     }
+                    
                     $file->move($networkPath, $imageSignatureFilename);
                     $employee->image_signature = $imageSignatureFilename;
                 }
                 
+                // For image_qrcode in store method
                 if ($request->hasFile('image_qrcode')) {
                     $file = $request->file('image_qrcode');
                     $imageQRCodeFilename = time() . '_' . $file->getClientOriginalName();
-                    $networkPath = '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\qrcode';
+                    
+                    // Get path from database settings
+                    $basePath = \App\Models\NetworkPath::getNetworkPath(
+                        'network_images_path', 
+                        '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\'
+                    );
+                    
+                    $networkPath = $basePath . 'qrcode';
+                    
                     if (!file_exists($networkPath)) {
                         mkdir($networkPath, 0777, true);
                     }
+                    
                     $file->move($networkPath, $imageQRCodeFilename);
                     $employee->image_qrcode = $imageQRCodeFilename;
                 }
                 
                 $employee->save();
+                
+                // Increment and update the counter in the settings table
+                DB::table('settings')
+                    ->where('key', 'employee_id_counter')
+                    ->update([
+                        'value' => $newIdNo + 1,
+                        'updated_at' => now()
+                    ]);
             });
             
             $fullName = $validated['employee_firstname'] . ' ' . $validated['employee_lastname'];
@@ -319,7 +356,13 @@ class EmployeeController extends Controller
                 if ($request->hasFile('image_person')) {
                     Log::info('Processing image_person file for employee', ['uuid' => $employee->uuid]);
                     
-                    $networkPath = '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\employee';
+                    // Get path from database settings, with fallback to default
+                    $basePath = \App\Models\NetworkPath::getNetworkPath(
+                        'network_images_path', 
+                        '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\'
+                    );
+                    
+                    $networkPath = $basePath . 'employee';
                     
                     if ($employee->image_person && file_exists($networkPath . '\\' . $employee->image_person)) {
                         unlink($networkPath . '\\' . $employee->image_person);
@@ -338,7 +381,13 @@ class EmployeeController extends Controller
                 }
                 
                 if ($request->hasFile('image_signature')) {
-                    $networkPath = '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\signature';
+                    // Get path from database settings, with fallback to default
+                    $basePath = \App\Models\NetworkPath::getNetworkPath(
+                        'network_images_path', 
+                        '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\'
+                    );
+                    
+                    $networkPath = $basePath . 'signature';
                     
                     if ($employee->image_signature && file_exists($networkPath . '\\' . $employee->image_signature)) {
                         unlink($networkPath . '\\' . $employee->image_signature);
@@ -358,7 +407,13 @@ class EmployeeController extends Controller
                 }
                 
                 if ($request->hasFile('image_qrcode')) {
-                    $networkPath = '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\qrcode';
+                    // Get path from database settings, with fallback to default
+                    $basePath = \App\Models\NetworkPath::getNetworkPath(
+                        'network_images_path', 
+                        '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\'
+                    );
+                    
+                    $networkPath = $basePath . 'qrcode';
                     
                     // Delete previous QR code if it exists
                     if ($employee->image_qrcode && file_exists($networkPath . '\\' . $employee->image_qrcode)) {
@@ -799,7 +854,11 @@ class EmployeeController extends Controller
      */
     private function getFrontTemplatePath(int $templateId): string 
     {
-        $this->networkPath = env('NETWORK_IMAGE_PATH', '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\id_templates\\');
+        // Get path from database settings, with fallback to default
+        $this->networkPath = \App\Models\NetworkPath::getNetworkPath(
+            'network_images_path', 
+            '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\'
+        ) . 'id_templates\\';
         
         try {
             // First try to get the template from template_images table
@@ -809,7 +868,7 @@ class EmployeeController extends Controller
                 
             if ($templateImage && !empty($templateImage->image_path)) {
                 // Check if the network path exists
-                $networkPath = '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\id_templates\\' . $templateImage->image_path;
+                $networkPath = $this->networkPath . $templateImage->image_path;
                 if (file_exists($networkPath)) {
                     // Use network.image route to serve the image
                     return route('network.image', ['folder' => 'id_templates', 'filename' => $templateImage->image_path]);
@@ -859,7 +918,11 @@ class EmployeeController extends Controller
      */
     private function getBackTemplatePath(int $templateId): string 
     {
-        $this->networkPath = env('NETWORK_IMAGE_PATH', '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\id_templates\\');
+        // Get path from database settings, with fallback to default
+        $this->networkPath = \App\Models\NetworkPath::getNetworkPath(
+            'network_images_path', 
+            '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\'
+        ) . 'id_templates\\';
         
         try {
             // First try to get the template from template_images table
@@ -869,7 +932,7 @@ class EmployeeController extends Controller
                 
             if ($templateImage && !empty($templateImage->image_path2)) {
                 // Check if the network path exists
-                $networkPath = '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\id_templates\\' . $templateImage->image_path2;
+                $networkPath = $this->networkPath . $templateImage->image_path2;
                 if (file_exists($networkPath)) {
                     // Use network.image route to serve the image
                     return route('network.image', ['folder' => 'id_templates', 'filename' => $templateImage->image_path2]);
