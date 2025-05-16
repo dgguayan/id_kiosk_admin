@@ -64,6 +64,11 @@ export function AppSidebar() {
         //     href: 'https://laravel.com/docs/starter-kits',
         //     icon: BookOpen,
         // },
+        {
+            title: '© All rights reserved. Created by CMU IT Interns 2025 || Ayunar, R., Baylosis, K., Coritico E., Guayan, D.',
+            href: '',
+            icon: null,
+        },
     ];
 
     return (

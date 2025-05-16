@@ -16,15 +16,15 @@ class AdminUserSeeder extends Seeder
     public function run()
     {
         // Create initial admin user
-        User::create([
-            'name' => 'Admin User',
-            'email' => 'admin2@gmail.com',
-            'password' => Hash::make('qwertyuiop1234567890!@#$%^&*()'),
-            'role' => 'Admin',
-            'email_verified_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        // User::create([
+        //     'name' => 'Admin User',
+        //     'email' => 'admin2@gmail.com',
+        //     'password' => Hash::make('qwertyuiop1234567890!@#$%^&*()'),
+        //     'role' => 'Admin',
+        //     'email_verified_at' => now(),
+        //     'created_at' => now(),
+        //     'updated_at' => now(),
+        // ]);
 
         // Create initial HR user
         User::create([

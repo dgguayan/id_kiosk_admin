@@ -131,7 +131,7 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({
                                         src={employee.image_signature.startsWith('data:') 
                                             ? employee.image_signature 
                                             : route('network.image', {
-                                                folder: 'signature',
+                                                folder: 'signatures',
                                                 filename: employee.image_signature
                                             })}
                                         alt="Signature"
