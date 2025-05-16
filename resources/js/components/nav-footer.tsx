@@ -16,15 +16,10 @@ export function NavFooter({
                 <SidebarMenu>
                     {items.map((item) => (
                         <SidebarMenuItem key={item.title}>
-                            <SidebarMenuButton
-                                asChild
-                                className="text-neutral-600 hover:text-neutral-800 dark:text-neutral-300 dark:hover:text-neutral-100"
-                            >
-                                <a href={item.href} target="_blank" rel="noopener noreferrer">
-                                    {item.icon && <Icon iconNode={item.icon} className="h-5 w-5" />}
-                                    <span>{item.title}</span>
-                                </a>
-                            </SidebarMenuButton>
+                            <div className="flex items-center gap-2 px-3 py-2 text-neutral-600 dark:text-neutral-300">
+                                {item.icon && <Icon iconNode={item.icon} className="h-5 w-5" />}
+                                <span>{item.title}</span>
+                            </div>
                         </SidebarMenuItem>
                     ))}
                 </SidebarMenu>

@@ -296,7 +296,7 @@ const BulkIdCardPreview: React.FC<BulkIdCardPreviewProps> = ({
                 // Load signature if available
                 if (employee.image_signature) {
                     try {
-                        const signatureImageUrl = route('network.image', { folder: 'signature', filename: employee.image_signature });
+                        const signatureImageUrl = route('network.image', { folder: 'signatures', filename: employee.image_signature });
                         employeeImages.signatureImg = await loadImage(signatureImageUrl);
                     } catch (e) {
                         console.warn(`Could not load signature for ${employee.id_no}`);
@@ -749,68 +749,66 @@ const BulkIdCardPreview: React.FC<BulkIdCardPreviewProps> = ({
                 const empSigX = templateImageConfig?.emp_sig_x || 341;
                 const empSigY = templateImageConfig?.emp_sig_y || 780;
                 
-                // Check if signature area is dark
-                const sigAreaIsDark = isBackgroundDark(ctx, empSigX, empSigY, signatureWidth / 2, signatureHeight / 2);
+                // Check if signature area is dark - sample a larger area for better detection
+                const sigAreaIsDark = isBackgroundDark(ctx, empSigX, empSigY, signatureWidth, signatureHeight);
                 
-                if (sigAreaIsDark) {
-                    // Create an offscreen canvas to invert the signature
-                    const offscreenCanvas = document.createElement('canvas');
-                    offscreenCanvas.width = signatureWidth;
-                    offscreenCanvas.height = signatureHeight;
-                    const offCtx = offscreenCanvas.getContext('2d');
+                // Create an offscreen canvas for signature processing
+                const offscreenCanvas = document.createElement('canvas');
+                offscreenCanvas.width = signatureWidth;
+                offscreenCanvas.height = signatureHeight;
+                const offCtx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
+                
+                if (offCtx) {
+                    // Draw the signature on the offscreen canvas
+                    offCtx.drawImage(
+                        signatureImg, 
+                        0, 
+                        0, 
+                        signatureWidth, 
+                        signatureHeight
+                    );
                     
-                    if (offCtx) {
-                        // Draw the signature on the offscreen canvas
-                        offCtx.drawImage(
-                            signatureImg, 
-                            0, 
-                            0, 
-                            signatureWidth, 
-                            signatureHeight
-                        );
+                    // Get the image data to process
+                    const imageData = offCtx.getImageData(0, 0, signatureWidth, signatureHeight);
+                    const data = imageData.data;
+                    
+                    for (let i = 0; i < data.length; i += 4) {
+                        // Calculate pixel brightness
+                        const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
                         
-                        // Invert the colors
-                        const imageData = offCtx.getImageData(0, 0, signatureWidth, signatureHeight);
-                        const data = imageData.data;
-                        
-                        for (let i = 0; i < data.length; i += 4) {
-                            // For signature, we typically want to keep transparency and just invert black to white
-                            if (data[i + 3] > 0) { // If pixel is not fully transparent
-                                // Detect if the pixel is dark (signature)
-                                const isDark = (data[i] + data[i + 1] + data[i + 2]) / 3 < 128;
-                                
-                                if (isDark) {
-                                    // Invert dark pixels to white
-                                    data[i] = 255;     // R
-                                    data[i + 1] = 255; // G
-                                    data[i + 2] = 255; // B
-                                    // Keep original alpha
-                                }
-                            }
+                        // Remove white/light background by making it transparent
+                        if (brightness > 220) { // Threshold for "white-ish" pixels
+                            data[i + 3] = 0; // Set alpha to transparent
                         }
                         
-                        offCtx.putImageData(imageData, 0, 0);
-                        
-                        // Draw the inverted signature on the main canvas
-                        ctx.drawImage(
-                            offscreenCanvas, 
-                            empSigX - (signatureWidth / 2), 
-                            empSigY - (signatureHeight / 2), 
-                            signatureWidth, 
-                            signatureHeight
-                        );
-                    } else {
-                        // Fallback to normal signature if offscreen context failed
-                        ctx.drawImage(
-                            signatureImg, 
-                            empSigX - (signatureWidth / 2), 
-                            empSigY - (signatureHeight / 2), 
-                            signatureWidth, 
-                            signatureHeight
-                        );
+                        // If on dark background, invert the signature to make it white
+                        if (sigAreaIsDark) {
+                            // For non-transparent pixels (those that are part of the signature)
+                            if (data[i + 3] > 50) { // If pixel has meaningful alpha
+                                // The darker the pixel, the whiter it should become
+                                const invertFactor = (255 - brightness) / 255;
+                                data[i] = Math.min(255, 255 - (255 - data[i]) * (1 - invertFactor));     // R
+                                data[i + 1] = Math.min(255, 255 - (255 - data[i + 1]) * (1 - invertFactor)); // G
+                                data[i + 2] = Math.min(255, 255 - (255 - data[i + 2]) * (1 - invertFactor)); // B
+                                // Enhance contrast by strengthening alpha on dark backgrounds
+                                data[i + 3] = Math.min(255, data[i + 3] * 1.2);
+                            }
+                        }
                     }
+                    
+                    // Apply the processed image data back to the canvas
+                    offCtx.putImageData(imageData, 0, 0);
+                    
+                    // Draw the processed signature on the main canvas
+                    ctx.drawImage(
+                        offscreenCanvas, 
+                        empSigX - (signatureWidth / 2), 
+                        empSigY - (signatureHeight / 2), 
+                        signatureWidth, 
+                        signatureHeight
+                    );
                 } else {
-                    // Default drawing for non-dark backgrounds
+                    // Fallback to normal signature if offscreen context failed
                     ctx.drawImage(
                         signatureImg, 
                         empSigX - (signatureWidth / 2), 

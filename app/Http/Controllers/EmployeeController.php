@@ -142,13 +142,13 @@ class EmployeeController extends Controller
         ]);
         
         try {
-            // Get the current counter value from the settings table
-            $counterSetting = DB::table('settings')->where('key', 'employee_id_counter')->first();
-            $newIdNo = $counterSetting ? (int)$counterSetting->value : 1;
+            // Get the highest ID number from the employees table and increment it
+            $latestEmployee = Employee::orderBy('id_no', 'desc')->first();
+            $lastIdNumber = $latestEmployee ? (int)$latestEmployee->id_no : 0;
+            $newIdNo = $lastIdNumber + 1;
             
             // Format the ID with leading zeros
             $idNo = str_pad($newIdNo, 6, '0', STR_PAD_LEFT);
-            
             DB::transaction(function () use ($validated, $idNo, $request, $newIdNo) {
                 $employee = new Employee();
                 $employee->id_no = $idNo;
@@ -204,7 +204,7 @@ class EmployeeController extends Controller
                         '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\'
                     );
                     
-                    $networkPath = $basePath . 'signature';
+                    $networkPath = $basePath . 'signatures';
                     
                     if (!file_exists($networkPath)) {
                         mkdir($networkPath, 0777, true);
@@ -306,6 +306,7 @@ class EmployeeController extends Controller
         
         // Validate the incoming request
         $validated = $request->validate([
+            'id_no' => 'required|string|max:255',
             'employee_firstname' => 'required|string|max:255',
             'employee_middlename' => 'nullable|string|max:255',
             'employee_lastname' => 'required|string|max:255',
@@ -335,6 +336,7 @@ class EmployeeController extends Controller
             $oldData = $employee->toArray();
             
             DB::transaction(function () use ($validated, $request, $employee) {
+                $employee->id_no = $validated['id_no'];
                 $employee->employee_firstname = $validated['employee_firstname'];
                 $employee->employee_middlename = $validated['employee_middlename'] ?? null;
                 $employee->employee_lastname = $validated['employee_lastname'];
@@ -387,7 +389,7 @@ class EmployeeController extends Controller
                         '\\\\DESKTOP-PJE8A0F\\Users\\Public\\images\\'
                     );
                     
-                    $networkPath = $basePath . 'signature';
+                    $networkPath = $basePath . 'signatures';
                     
                     if ($employee->image_signature && file_exists($networkPath . '\\' . $employee->image_signature)) {
                         unlink($networkPath . '\\' . $employee->image_signature);

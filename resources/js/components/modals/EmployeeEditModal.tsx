@@ -62,6 +62,7 @@ const EmployeeEditModal: React.FC<EmployeeEditModalProps> = ({
         emergency_name: '',
         emergency_contact_number: '',
         emergency_address: '',
+        id_no: '',
     });
     const [editFiles, setEditFiles] = useState<Record<string, File>>({});
     const [editFilePreviews, setEditFilePreviews] = useState<Record<string, string>>({});
@@ -92,6 +93,7 @@ const EmployeeEditModal: React.FC<EmployeeEditModalProps> = ({
                 emergency_name: employee.emergency_name || '',
                 emergency_contact_number: employee.emergency_contact_number || '',
                 emergency_address: employee.emergency_address || '',
+                id_no: employee.id_no || '',
             });
             
             // Set image previews if available
@@ -124,6 +126,7 @@ const EmployeeEditModal: React.FC<EmployeeEditModalProps> = ({
                 emergency_name: '',
                 emergency_contact_number: '',
                 emergency_address: '',
+                id_no: '',
             });
             setEditFiles({});
             setEditFilePreviews({});
@@ -259,7 +262,7 @@ const EmployeeEditModal: React.FC<EmployeeEditModalProps> = ({
                 
                 <div className="max-h-[calc(80vh-120px)] overflow-y-auto px-6">
                     <form id="employee-edit-form" onSubmit={handleEditSubmit} className="space-y-6">
-                        <div className="flex flex-col md:flex-row gap-6">
+                        <div className="flex flex-col md:flex-row gap-6 mb-1">
                             {/* Left Side - Images */}
                             <div className="md:w-1/3 space-y-6">
                                 <div>
@@ -320,7 +323,7 @@ const EmployeeEditModal: React.FC<EmployeeEditModalProps> = ({
                                                         src={editFilePreviews.image_signature.startsWith('data:') 
                                                             ? editFilePreviews.image_signature 
                                                             : route('network.image', {
-                                                                folder: 'signature',
+                                                                folder: 'signatures',
                                                                 filename: editFilePreviews.image_signature
                                                             })} 
                                                         alt="Signature preview" 
@@ -512,6 +515,23 @@ const EmployeeEditModal: React.FC<EmployeeEditModalProps> = ({
                                         Employment Information
                                     </h4>
                                     <div className="grid grid-cols-1 gap-y-1 sm:grid-cols-2 sm:gap-x-4">
+                                        <div>
+                                            <label htmlFor="edit_id_no" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                ID Number
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="id_no"
+                                                id="edit_id_no"
+                                                value={editFormData.id_no}
+                                                onChange={handleEditInputChange}
+                                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                            />
+                                            {errors.id_no && (
+                                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.id_no}</p>
+                                            )}
+                                        </div>
+
                                         <div>
                                             <label htmlFor="edit_position" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                 Position *
