@@ -6,6 +6,7 @@ use Inertia\Inertia;
 use App\Models\BusinessUnit;
 use App\Models\Employee;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 class DashboardController extends Controller
 {
@@ -22,17 +23,23 @@ class DashboardController extends Controller
                                         ->where('id_status', '!=', 'pending')
                                         ->count();
             
+            // Handle image path with proper fallback logic
+            $logoUrl = "/images/logos/" . strtolower($unit->businessunit_code) . "-logo.png"; // Default fallback
+            
+            // Only use database image if it exists in storage
+            if ($unit->businessunit_image_path && Storage::disk('public')->exists($unit->businessunit_image_path)) {
+                $logoUrl = "/storage/{$unit->businessunit_image_path}";
+            }
+            
             return [
                 'id' => $unit->businessunit_id,
-                'name' => $unit->businessunit_name,
                 'code' => $unit->businessunit_code,
+                'name' => $unit->businessunit_name,
                 'totalEmployees' => $totalEmployeesByUnit,
                 'idCompletionPercentage' => $totalEmployeesByUnit > 0 
                     ? round(($idCompletionCount / $totalEmployeesByUnit) * 100) 
                     : 0,
-                'logoUrl' => $unit->businessunit_image_path 
-                    ? "/storage/{$unit->businessunit_image_path}" 
-                    : '/images/logos/placeholder-logo.png', // Fallback to placeholder
+                'logoUrl' => $logoUrl,
             ];
         });
 

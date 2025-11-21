@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class BusinessUnitSeeder extends Seeder
 {
@@ -14,36 +13,40 @@ class BusinessUnitSeeder extends Seeder
     public function run(): void
     {
         $businessUnits = [
-            'MMHI', 
-            'MMFI', 
-            'MMEI', 
-            'MMHC', 
-            'MMDC',
+            [
+                'code' => 'MMHI',
+                'name' => 'Holdings Incorporated',
+                'image_path' => 'business_units/mmhi-logo.png',
+            ],
+            [
+                'code' => 'MMFI',
+                'name' => 'Farms Incorporated',
+                'image_path' => 'business_units/mmfi-logo.png',
+            ],
+            [
+                'code' => 'MMEI',
+                'name' => 'Enterprises Incorporated',
+                'image_path' => 'business_units/mmei-logo.png',
+            ],
+            [
+                'code' => 'MMHC',
+                'name' => 'Hospitality Corporation',
+                'image_path' => 'business_units/mmhc-logo.png',
+            ],
+            [
+                'code' => 'MMDC',
+                'name' => 'Development Corporation',
+                'image_path' => 'business_units/mmdc-logo.png',
+            ],
         ];
 
-        $businessUnits_codes = [
-            'MMHI' => 'Holdings Incorporated',
-            'MMFI' => 'Farms Incorporated',
-            'MMEI' => 'Enterprises Incorporated',
-            'MMHC' => 'Hospitality Corporation',
-            'MMDC' => 'Development Corporation',
-        ];
-
-        $businessUnits_image_path = [
-            'MMHI' => 'business_units/wmtqLoTtektHXnJCGcyAZmBzAVHLL9QIv4IKo8kO.png',
-            'MMFI' => 'business_units/wmtqLoTtektHXnJCGcyAZmBzAVHLL9QIv4IKo8kO.png',
-            'MMEI' => 'business_units/8TPfViU8WBlwDbuhqlua6cSSnN8Kv5EtuXu12CyU.png',
-            'MMHC' => 'business_units/8TPfViU8WBlwDbuhqlua6cSSnN8Kv5EtuXu12CyU.png',
-            'MMDC' => 'business_units/80N0wowMfvpBjFYbgPKNXjdDzx0orxiffOXrNgVe.png',
-        ];
-
-        foreach ($businessUnits_codes as $code => $name) {
+        foreach ($businessUnits as $unit) {
             DB::table('business_units')->insert([
-            'businessunit_name' => $code,
-            'businessunit_code' => $name,
-            'businessunit_image_path' => $businessUnits_image_path[$code],
-            'created_at' => now(),
-            'updated_at' => now(),
+                'businessunit_code' => $unit['code'],
+                'businessunit_name' => $unit['name'],
+                'businessunit_image_path' => $unit['image_path'],
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
     }

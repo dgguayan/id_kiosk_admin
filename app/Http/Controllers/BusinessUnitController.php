@@ -36,8 +36,35 @@ class BusinessUnitController extends Controller
         // Get current user's role for permission control
         $currentUserRole = Auth::user()->role;
         
+        // Transform business units to include proper image paths
+        $transformedBusinessUnits = $businessUnits->map(function ($unit) {
+            $logoUrl = null;
+            
+            if ($unit->businessunit_image_path) {
+                // Always return the storage path if there's an image path in database
+                $logoUrl = "/storage/{$unit->businessunit_image_path}";
+                
+                // Log for debugging
+                Log::info('Business Unit Image Path', [
+                    'unit_id' => $unit->businessunit_id,
+                    'unit_name' => $unit->businessunit_name,
+                    'stored_path' => $unit->businessunit_image_path,
+                    'full_url' => $logoUrl,
+                    'file_exists' => Storage::disk('public')->exists($unit->businessunit_image_path),
+                    'full_storage_path' => storage_path('app/public/' . $unit->businessunit_image_path)
+                ]);
+            }
+            
+            return [
+                'businessunit_id' => $unit->businessunit_id,
+                'businessunit_name' => $unit->businessunit_name,
+                'businessunit_code' => $unit->businessunit_code,
+                'businessunit_image_path' => $logoUrl,
+            ];
+        });
+        
         return Inertia::render('BusinessUnit/Index', [
-            'businessUnits' => $businessUnits->items(),
+            'businessUnits' => $transformedBusinessUnits->toArray(),
             'meta' => [
                 'current_page' => $businessUnits->currentPage(),
                 'last_page' => $businessUnits->lastPage(),
@@ -118,7 +145,7 @@ class BusinessUnitController extends Controller
 
             $validated = $request->validate([
                 'businessunit_name' => 'required|string|max:255',
-                'businessunit_code' => 'nullable|string|max:50|unique:business_units,businessunit_code,' . $id . ',businessunit_id', // Changed to nullable
+                'businessunit_code' => 'required|string|max:50|unique:business_units,businessunit_code,' . $id . ',businessunit_id',
                 'businessunit_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             ]);
 
@@ -132,8 +159,7 @@ class BusinessUnitController extends Controller
                 ];
             }
             
-            // Only track changes if the code is provided
-            if (isset($validated['businessunit_code']) && $businessUnit->businessunit_code !== $validated['businessunit_code']) {
+            if ($businessUnit->businessunit_code !== $validated['businessunit_code']) {
                 $changes['code'] = [
                     'old' => $businessUnit->businessunit_code,
                     'new' => $validated['businessunit_code']
@@ -141,28 +167,30 @@ class BusinessUnitController extends Controller
             }
             
             $businessUnit->businessunit_name = $validated['businessunit_name'];
-            
-            // Only update the code if it's provided
-            if (isset($validated['businessunit_code'])) {
-                $businessUnit->businessunit_code = $validated['businessunit_code'];
-            }
+            $businessUnit->businessunit_code = $validated['businessunit_code'];
 
             if ($request->hasFile('businessunit_image')) {
-                if ($businessUnit->businessunit_image_path) {
+                // Delete old image if it exists
+                if ($businessUnit->businessunit_image_path && Storage::disk('public')->exists($businessUnit->businessunit_image_path)) {
                     Storage::disk('public')->delete($businessUnit->businessunit_image_path);
                 }
 
                 $path = $request->file('businessunit_image')->store('business_units', 'public');
                 $changes['image'] = [
-                    'old' => $businessUnit->businessunit_image_path,
+                    'old' => $businessUnit->businessunit_image_path ?? 'none',
                     'new' => $path
                 ];
                 $businessUnit->businessunit_image_path = $path;
+                
+                Log::info('Updated business unit image', [
+                    'business_unit_id' => $businessUnit->businessunit_id,
+                    'old_path' => $oldData['businessunit_image_path'] ?? 'none',
+                    'new_path' => $path
+                ]);
             }
 
             $businessUnit->save();
 
-            // Update activity log to include the code
             ActivityLogService::log(
                 'businessunit_updated',
                 'Updated business unit: ' . $businessUnit->businessunit_name . ' (' . $businessUnit->businessunit_code . ')',
