@@ -224,7 +224,7 @@ export default function Dashboard() {
                     <h2 className="text-xl font-semibold mb-4">All of M. Montesclaros Business Units</h2>
                     
                     {businessUnits
-                        .filter((unit: { name: string; }) => unit.name === 'MMHI')
+                        .filter((unit: { code: string; }) => unit.code === 'MMHI')
                         .map((unit: typeof businessUnits[0]) => (
                             <BusinessUnitCard 
                                 key={unit.id}
@@ -236,7 +236,7 @@ export default function Dashboard() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
                         {businessUnits
-                            .filter((unit: { name: string; }) => unit.name !== 'MMHI')
+                            .filter((unit: { code: string; }) => unit.code !== 'MMHI')
                             .map((unit: typeof businessUnits[0]) => (
                                 <BusinessUnitCard 
                                     key={unit.id}

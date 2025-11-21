@@ -432,6 +432,7 @@ export default function BusinessUnitIndex({
         // Create FormData to handle file upload
         const formData = new FormData();
         formData.append('businessunit_name', editFormData.businessunit_name);
+        formData.append('businessunit_code', editFormData.businessunit_code);
         
         // Only append image if it's selected
         if (editFormData.businessunit_image) {
@@ -470,7 +471,7 @@ export default function BusinessUnitIndex({
                 setIsEditing(false);
                 setErrors(errors);
             },
-            forceFormData: true, // Important: force FormData for file uploads
+            forceFormData: true,
         });
     };
     
@@ -589,17 +590,33 @@ export default function BusinessUnitIndex({
                                             {businessUnit.businessunit_image_path ? (
                                                 <div className="flex-shrink-0 h-10 w-10 mx-auto mb-2">
                                                     <img 
-                                                        src={`/storage/${businessUnit.businessunit_image_path}`} 
+                                                        src={businessUnit.businessunit_image_path}
                                                         alt={businessUnit.businessunit_name}
-                                                        className="h-10 w-10 object-cover rounded-md border border-gray-200 dark:border-gray-700 dark:invert"
+                                                        className="h-10 w-10 object-contain rounded-md border border-gray-200 dark:border-gray-700 dark:bg-white dark:p-1"
                                                         onError={(e) => {
-                                                            e.currentTarget.src = '/images/placeholder.png';
+                                                            const target = e.currentTarget;
+                                                            // Try fallback to public images folder
+                                                            if (!target.src.includes('/images/logos/')) {
+                                                                target.src = `/images/logos/${businessUnit.businessunit_code?.toLowerCase()}-logo.png`;
+                                                            } else {
+                                                                // Final fallback to placeholder
+                                                                target.src = '/images/logos/placeholder-logo.png';
+                                                            }
                                                         }}
                                                     />
                                                 </div>
                                             ) : (
                                                 <div className="flex-shrink-0 h-10 w-10 bg-gray-100 dark:bg-gray-700 rounded-md mx-auto mb-2 flex items-center justify-center">
-                                                    <span className="text-gray-400 dark:text-gray-500 text-xs">No img</span>
+                                                    <img 
+                                                        src={`/images/logos/${businessUnit.businessunit_code?.toLowerCase()}-logo.png`}
+                                                        alt={businessUnit.businessunit_name}
+                                                        className="h-10 w-10 object-contain"
+                                                        onError={(e) => {
+                                                            const target = e.currentTarget;
+                                                            target.style.display = 'none';
+                                                            target.parentElement!.innerHTML = '<span class="text-gray-400 dark:text-gray-500 text-xs">No img</span>';
+                                                        }}
+                                                    />
                                                 </div>
                                             )}
                                             <div className="min-w-0 flex-1">
@@ -1053,9 +1070,17 @@ export default function BusinessUnitIndex({
                                                         {businessUnitToEdit?.businessunit_image_path && (
                                                             <div className="flex-shrink-0 h-16 w-16">
                                                                 <img 
-                                                                    src={`/storage/${businessUnitToEdit.businessunit_image_path}`} 
+                                                                    src={businessUnitToEdit.businessunit_image_path}
                                                                     alt={businessUnitToEdit.businessunit_name}
-                                                                    className="h-16 w-16 object-cover rounded-md border border-gray-200 dark:border-gray-700"
+                                                                    className="h-16 w-16 object-contain rounded-md border border-gray-200 dark:border-gray-700 dark:bg-white dark:p-1"
+                                                                    onError={(e) => {
+                                                                        const target = e.currentTarget;
+                                                                        if (!target.src.includes('/images/logos/')) {
+                                                                            target.src = `/images/logos/${businessUnitToEdit.businessunit_code?.toLowerCase()}-logo.png`;
+                                                                        } else {
+                                                                            target.src = '/images/logos/placeholder-logo.png';
+                                                                        }
+                                                                    }}
                                                                 />
                                                             </div>
                                                         )}
