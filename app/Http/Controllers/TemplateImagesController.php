@@ -79,12 +79,16 @@ class TemplateImagesController extends Controller
     {
         try {
             // Validate request data
-            $request->validate([
+            $validated = $request->validate([
                 'businessunit_id' => 'required|exists:business_units,businessunit_id',
                 'image_front' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
                 'image_back' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
-                'emp_img_x' => 'nullable|integer',
-                'emp_img_y' => 'nullable|integer',
+            ]);
+
+            Log::info('Template upload started', [
+                'businessunit_id' => $request->businessunit_id,
+                'has_front_image' => $request->hasFile('image_front'),
+                'has_back_image' => $request->hasFile('image_back')
             ]);
 
             // Get files
@@ -95,30 +99,102 @@ class TemplateImagesController extends Controller
             $frontImageName = uniqid() . '_' . time() . '.' . $frontImage->getClientOriginalExtension();
             $backImageName = uniqid() . '_' . time() . '.' . $backImage->getClientOriginalExtension();
             
-            // Ensure the network directory exists
-            if (!file_exists($this->networkPath)) {
-                mkdir($this->networkPath, 0777, true);
+            // Try to ensure the network directory exists
+            try {
+                if (!file_exists($this->networkPath)) {
+                    if (!mkdir($this->networkPath, 0777, true)) {
+                        throw new \Exception('Failed to create network directory');
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning('Network path not available, using fallback storage', [
+                    'network_path' => $this->networkPath,
+                    'error' => $e->getMessage()
+                ]);
+                
+                // Fallback: Store in Laravel storage/app/public instead
+                $frontImageName = $frontImage->store('id_templates', 'public');
+                $backImageName = $backImage->store('id_templates', 'public');
+                
+                // Remove the 'id_templates/' prefix as it's stored in image_path
+                $frontImageName = basename($frontImageName);
+                $backImageName = basename($backImageName);
             }
             
-            // Move files directly to the network path
-            $frontImage->move($this->networkPath, $frontImageName);
-            $backImage->move($this->networkPath, $backImageName);
+            // Only try network storage if directory was successfully created
+            if (file_exists($this->networkPath) && is_writable($this->networkPath)) {
+                try {
+                    $frontImage->move($this->networkPath, $frontImageName);
+                    $backImage->move($this->networkPath, $backImageName);
+                    Log::info('Files stored in network path', [
+                        'front' => $frontImageName,
+                        'back' => $backImageName
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to move files to network path', [
+                        'error' => $e->getMessage()
+                    ]);
+                    throw $e;
+                }
+            }
 
-            // Save to database
+            // Save to database with default coordinates
             $template = TemplateImage::create([
-                'businessunit_id' => $request->businessunit_id,
+                'businessunit_id' => $validated['businessunit_id'],
                 'image_path' => $frontImageName,
                 'image_path2' => $backImageName,
+                'emp_img_x' => 177,
+                'emp_img_y' => 338,
+                'emp_img_width' => 300,
+                'emp_img_height' => 300,
+                'emp_name_x' => 325,
+                'emp_name_y' => 675,
+                'emp_pos_x' => 325,
+                'emp_pos_y' => 700,
+                'emp_idno_x' => 325,
+                'emp_idno_y' => 725,
+                'emp_sig_x' => 325,
+                'emp_sig_y' => 760,
+                'emp_qrcode_x' => 325,
+                'emp_qrcode_y' => 500,
+                'emp_qrcode_width' => 150,
+                'emp_qrcode_height' => 150,
+                'emp_add_x' => 325,
+                'emp_add_y' => 225,
+                'emp_bday_x' => 325,
+                'emp_bday_y' => 261,
+                'emp_sss_x' => 325,
+                'emp_sss_y' => 286,
+                'emp_phic_x' => 325,
+                'emp_phic_y' => 311,
+                'emp_hdmf_x' => 325,
+                'emp_hdmf_y' => 336,
+                'emp_tin_x' => 325,
+                'emp_tin_y' => 361,
+                'emp_emergency_name_x' => 325,
+                'emp_emergency_name_y' => 626,
+                'emp_emergency_num_x' => 325,
+                'emp_emergency_num_y' => 681,
+                'emp_emergency_add_x' => 325,
+                'emp_emergency_add_y' => 739,
+                'emp_back_idno_x' => 325,
+                'emp_back_idno_y' => 400,
+                'hidden_elements' => json_encode([]),
+            ]);
+
+            Log::info('Template created successfully', [
+                'template_id' => $template->id,
+                'businessunit_id' => $template->businessunit_id
             ]);
 
             // Log the template creation
             ActivityLogService::log(
                 'template_created',
-                'Created a new ID template for business unit ID: ' . $request->businessunit_id,
+                'Created a new ID template for business unit ID: ' . $validated['businessunit_id'],
                 'App\Models\TemplateImage',
                 $template->id,
                 [
-                    'businessunit_id' => $request->businessunit_id,
+                    'businessunit_id' => $validated['businessunit_id'],
                     'front_image' => $frontImageName,
                     'back_image' => $backImageName,
                     'created_by' => Auth::user()->name ?? 'System'
@@ -127,6 +203,11 @@ class TemplateImagesController extends Controller
 
             return redirect()->route('id-templates.index')->with('success', 'Template added successfully!');
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation error storing template', [
+                'errors' => $e->errors()
+            ]);
+            return back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             Log::error('Error storing template images: ' . $e->getMessage(), [
                 'file' => $e->getFile(),
@@ -134,7 +215,7 @@ class TemplateImagesController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
             
-            return back()->with('error', 'An error occurred while saving the template: ' . $e->getMessage());
+            return back()->with('error', 'An error occurred while saving the template: ' . $e->getMessage())->withInput();
         }
     }
 

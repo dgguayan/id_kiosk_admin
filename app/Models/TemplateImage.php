@@ -15,6 +15,7 @@ class TemplateImage extends Model
         'businessunit_id',
         'image_path',
         'image_path2',
+        'hidden_elements',
         'emp_img_x',
         'emp_img_y',
         'emp_img_width',
@@ -51,6 +52,10 @@ class TemplateImage extends Model
         'emp_qrcode_height',
         'emp_back_idno_x',
         'emp_back_idno_y',
+    ];
+
+    protected $casts = [
+        'hidden_elements' => 'array',
     ];
 
     // Relationship with BusinessUnit
